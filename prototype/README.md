@@ -7,6 +7,8 @@ Hardcoded-data web demo proving the voice-first flow, distinct from the real "v1
 - [PROTOTYPE.md](./docs/PROTOTYPE.md) — purpose, scope, audience, tech stack, timeline, success criteria.
 - [PROTOTYPE_DESIGN.md](./docs/PROTOTYPE_DESIGN.md) — pages, wireframes, colour/icon system, API routes.
 - [SETUP_GUIDE.md](./docs/SETUP_GUIDE.md) — pre-development checklist (env/secrets, linting, testing, pre-commit).
+- [PHASES.md](./docs/PHASES.md) — step-by-step build plan, from repo scaffolding through end-to-end demo readiness.
+- [DESIGN_TOOLING.md](./docs/DESIGN_TOOLING.md) — installed animation/design plugins and where each one is (and isn't) appropriate for this app.
 
 ## Structure (once scaffolded)
 
