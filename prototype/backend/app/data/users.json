@@ -1,0 +1,26 @@
+[
+  {
+    "id": "farmer1",
+    "password": "farmer123",
+    "name": "Ramesh Kumar",
+    "role": "farmer",
+    "location": "Kharagpur",
+    "language": "hi"
+  },
+  {
+    "id": "farmer2",
+    "password": "farmer123",
+    "name": "Sita Devi",
+    "role": "farmer",
+    "location": "Kharagpur",
+    "language": "bn"
+  },
+  {
+    "id": "buyer1",
+    "password": "buyer123",
+    "name": "Ramesh Traders",
+    "role": "buyer",
+    "location": "Kharagpur",
+    "language": "en"
+  }
+]

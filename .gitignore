@@ -1,0 +1,7 @@
+# Stray tool caches (should live under prototype/backend, but guard the repo root too)
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+__pycache__/
+node_modules/
+.next/

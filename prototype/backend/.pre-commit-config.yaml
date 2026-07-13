@@ -1,0 +1,22 @@
+# Run from the repo root: pre-commit install -c prototype/backend/.pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check (backend)
+        entry: uv run --project prototype/backend ruff check --fix
+        language: system
+        files: ^prototype/backend/.*\.py$
+
+      - id: ruff-format
+        name: ruff format (backend)
+        entry: uv run --project prototype/backend ruff format
+        language: system
+        files: ^prototype/backend/.*\.py$
+
+      - id: mypy
+        name: mypy (backend)
+        entry: uv run --project prototype/backend mypy --config-file prototype/backend/pyproject.toml prototype/backend/app
+        language: system
+        files: ^prototype/backend/.*\.py$
+        pass_filenames: false

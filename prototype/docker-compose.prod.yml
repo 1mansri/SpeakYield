@@ -1,0 +1,12 @@
+services:
+  frontend:
+    build:
+      target: runner
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+
+  backend:
+    restart: unless-stopped
+    environment:
+      ENV: production

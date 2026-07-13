@@ -1,0 +1,79 @@
+{
+  "buyers": [
+    {
+      "id": "b1",
+      "name": "Ramesh Traders",
+      "commodities": ["Tomato", "Onion"],
+      "price_min": 15,
+      "price_max": 25,
+      "location": "Kharagpur"
+    },
+    {
+      "id": "b2",
+      "name": "Kolkata Fresh Mart",
+      "commodities": ["Tomato", "Potato", "Rice"],
+      "price_min": 10,
+      "price_max": 30,
+      "location": "Kolkata"
+    },
+    {
+      "id": "b3",
+      "name": "Midnapore Wholesale",
+      "commodities": ["Rice", "Wheat"],
+      "price_min": 5,
+      "price_max": 40,
+      "location": "Midnapore"
+    }
+  ],
+  "dealers": [
+    {
+      "id": "d1",
+      "name": "Krishi Bhandar",
+      "inputs": ["Urea fertiliser", "Seeds", "Pesticide"],
+      "price": 280,
+      "coverage_km": 15,
+      "location": "Kharagpur"
+    },
+    {
+      "id": "d2",
+      "name": "Green Agro Store",
+      "inputs": ["Urea fertiliser", "DAP", "Seeds"],
+      "price": 300,
+      "coverage_km": 25,
+      "location": "Kharagpur"
+    },
+    {
+      "id": "d3",
+      "name": "Midnapore Agri Supply",
+      "inputs": ["Urea fertiliser", "Pesticide", "DAP"],
+      "price": 265,
+      "coverage_km": 20,
+      "location": "Midnapore"
+    }
+  ],
+  "listings": [
+    {
+      "id": "l1",
+      "commodity": "Tomato",
+      "quantity": 40,
+      "unit": "kg",
+      "price": 18,
+      "location": "Kharagpur",
+      "farmer": "Sita Devi"
+    },
+    {
+      "id": "l2",
+      "commodity": "Rice",
+      "quantity": 100,
+      "unit": "kg",
+      "price": 22,
+      "location": "Midnapore",
+      "farmer": "Anil Mahto"
+    }
+  ],
+  "delivery_partners": [
+    { "name": "Suresh", "vehicle": "bike" },
+    { "name": "Bablu", "vehicle": "van" },
+    { "name": "Anwar", "vehicle": "bike" }
+  ]
+}

@@ -32,6 +32,8 @@ Success = a working demo that survives an unscripted "let me try it," not just a
 - Persistent database (fixed JSON dataset is enough; no Mongo/Postgres).
 - Odia or any language beyond Hindi/Bengali.
 
+**Deliberate exception — testing-only mock login.** A minimal ID/password gate (`POST /api/auth/login`, plaintext-compared against a fixed JSON user list, in-memory token session) sits in front of the app so different testers/reviewers can sign in as different mock personas (farmer vs. buyer, Hindi vs. Bengali). This is **not** "real user accounts/auth" in the sense excluded above — no OTP, no KYC, no persistence beyond process memory, no real security — and the actual farmer-facing product has no login screen at all. It exists purely as a demo/QA convenience and to exercise a real frontend→backend network call. See [PROTOTYPE_DESIGN.md §5](./PROTOTYPE_DESIGN.md#5-pages) and [DEPLOYMENT.md](./DEPLOYMENT.md) for test credentials.
+
 ## 4. Data
 
 A **fixed sample dataset** (JSON, loaded by the backend) representing:
@@ -46,9 +48,8 @@ Matching logic is real (commodity + rough location/price matching against this f
 | Layer | Choice | Why |
 |---|---|---|
 | Frontend | **Next.js** | Carries forward toward the real MVP's PWA/offline requirements; own Docker container. |
-| Backend | **Python + FastAPI** | Fast to wire up OpenAI + Whisper calls, Pydantic validates structured intent-extraction output, async-native for the STT→LLM call chain, auto-generated `/docs` contract for the frontend. Own Docker container. |
-| STT | **Self-hosted Whisper** (Docker, CPU-only) | Free — avoids burning OpenAI credits on high-volume audio calls during dev/demo iteration. Own Docker container. |
-| LLM (intent extraction) + TTS (read-back) | **OpenAI API** | Uses existing credits; low call volume relative to STT, so cost is manageable. |
+| Backend | **Python + FastAPI** | Fast to wire up Sarvam's STT/chat/TTS calls, Pydantic validates structured intent-extraction output, async-native for the STT→LLM call chain, auto-generated `/docs` contract for the frontend. Own Docker container. |
+| STT + LLM (intent extraction) + TTS (read-back) | **Sarvam AI** (Saaras STT, chat completions, Bulbul TTS) | Single Indic-native provider for the whole voice pipeline — one API key, one bill, tuned for Hindi/Bengali accents rather than a generic multilingual model doing Indic languages as a side capability. OpenAI-compatible chat API (`response_format` + JSON Schema) covers structured intent extraction. ₹100 free signup credit covers dev/demo iteration for the prototype's 1-week timeline. |
 | Data | Fixed JSON dataset, in-memory/file-backed | No real DB needed at prototype stage. |
 
 Frontend and backend are **separate services**, communicating over REST (FastAPI auto-generates the OpenAPI contract).
@@ -57,16 +58,16 @@ Full design/API detail: [PROTOTYPE_DESIGN.md](./PROTOTYPE_DESIGN.md).
 
 ## 6. Docker setup
 
-- `docker-compose.yml` — base service definitions (frontend, backend, stt).
+- `docker-compose.yml` — base service definitions (frontend, backend). STT is a hosted API call (Sarvam), not a container — no `stt` service.
 - `docker-compose.override.yml` — dev overrides (bind-mounted source, hot reload); applied automatically by `docker compose up`.
 - `docker-compose.prod.yml` — built images, no mounts; run via `docker compose -f docker-compose.yml -f docker-compose.prod.yml up`.
 
-Goal: anyone can clone the repo and run one command to get the full stack (frontend + backend + STT) running locally, in dev or prod mode, without manually installing Python/Node/Whisper dependencies.
+Goal: anyone can clone the repo and run one command to get the full stack (frontend + backend) running locally, in dev or prod mode, without manually installing Python/Node dependencies. Only a Sarvam API key (`SARVAM_API_KEY`) needs to be supplied via `.env`.
 
 ## 7. Timeline
 
 **1 week.** Rough split:
-- Days 1–2: scaffolding (repo structure, Docker/compose, bare mic → Whisper → OpenAI → read-back loop working end to end for one language).
+- Days 1–2: scaffolding (repo structure, Docker/compose, bare mic → Sarvam STT → Sarvam chat → Sarvam TTS read-back loop working end to end for one language).
 - Days 3–4: sell-produce flow complete (matching, mock delivery, mock payment, read-back/confirm polish, Bengali added).
 - Day 5: buy-inputs flow (reusing the voice-confirm component).
 - Days 6–7: UI polish per [PROTOTYPE_DESIGN.md](./PROTOTYPE_DESIGN.md), responsive pass, real-speech testing/hardening on the sell-produce flow, buffer.
@@ -75,4 +76,4 @@ Goal: anyone can clone the repo and run one command to get the full stack (front
 
 - A person who has never seen the demo can speak a real sell-produce request in Hindi or Bengali and complete the flow to a mock payment confirmation without being walked through it.
 - The read-back/confirm step catches at least one deliberately-introduced misrecognition in a live test (proves the safety pattern, not just the happy path).
-- Runs fully via `docker compose up` with no manual setup steps beyond providing an OpenAI API key.
+- Runs fully via `docker compose up` with no manual setup steps beyond providing a Sarvam API key.

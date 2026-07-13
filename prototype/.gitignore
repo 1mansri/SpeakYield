@@ -1,0 +1,23 @@
+# Node (frontend)
+node_modules/
+.next/
+out/
+
+# Python (backend)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env files
+*.env
+.env
+.env.local
+
+# Docker volume data
+/backend/data/volumes/
+/stt/data/
+
+# OS/editor
+.DS_Store
+*.pem
