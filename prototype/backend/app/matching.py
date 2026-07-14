@@ -68,7 +68,7 @@ def get_partner(action: str, partner_id: str) -> dict[str, Any] | None:
     pool = CATALOG["buyers"] if action == "sell" else CATALOG["dealers"]
     for partner in pool:
         if partner["id"] == partner_id:
-            return partner
+            return dict(partner)
     return None
 
 

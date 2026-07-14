@@ -23,7 +23,9 @@ def listing_options(draft: VoiceDraft) -> OptionsResponse:
 @router.post("")
 def create_listing(req: CreateMatchRequest) -> MatchCreateResponse:
     options = build_options(req.draft)
-    chosen = next((o for o in options if o["id"] == req.partner_id), None) if req.partner_id else None
+    chosen = None
+    if req.partner_id:
+        chosen = next((o for o in options if o["id"] == req.partner_id), None)
     if chosen is None:
         chosen = options[0]  # no explicit pick -> fall back to the top-ranked buyer
     return create_record(req.draft, chosen)

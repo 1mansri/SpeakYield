@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import CORS_ALLOW_ORIGINS
 from app.logging_config import configure_logging
 from app.routers import auth, catalog, listings, orders, reviews, voice
 
@@ -10,7 +11,7 @@ app = FastAPI(title="Speak Yield Prototype API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=CORS_ALLOW_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )

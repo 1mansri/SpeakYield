@@ -68,7 +68,10 @@ def test_build_options_returns_every_partner_with_review_fields():
     options = build_options(_sell_draft())
     assert len(options) == 4
     first = options[0]
-    assert {"id", "name", "role", "price", "distance_km", "rating", "reviews", "review", "tags"} <= set(first)
+    expected_keys = {
+        "id", "name", "role", "price", "distance_km", "rating", "reviews", "review", "tags"
+    }
+    assert expected_keys <= set(first)
     assert first["role"] == "buyer"
 
 

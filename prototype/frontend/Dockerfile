@@ -10,6 +10,12 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# NEXT_PUBLIC_* vars are inlined into the client bundle at build time, so the backend URL
+# must be passed as a build arg here (not just a runtime env). In prod (e.g. Dokploy) set the
+# build-time variable NEXT_PUBLIC_API_URL to the backend's public URL. Defaults to localhost for
+# local Docker builds.
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN pnpm run build
 
 FROM base AS runner
