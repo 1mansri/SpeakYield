@@ -1,16 +1,32 @@
 from fastapi import APIRouter, HTTPException
 
-from app.matching import match_dealers
-from app.schemas import MatchCreateResponse, StatusResponse, VoiceDraft
+from app.matching import build_options
+from app.schemas import (
+    CreateMatchRequest,
+    MatchCreateResponse,
+    OptionsResponse,
+    StatusResponse,
+    VoiceDraft,
+)
 from app.store import create_record, get_status
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
 
+@router.post("/options")
+def order_options(draft: VoiceDraft) -> OptionsResponse:
+    """Dealers who could supply this input, ranked — the farmer's price-discovery view
+    when buying. Shown so the farmer picks who to buy from, rather than being auto-matched."""
+    return OptionsResponse(options=build_options(draft))  # type: ignore[arg-type]
+
+
 @router.post("")
-def create_order(draft: VoiceDraft) -> MatchCreateResponse:
-    best_dealer = match_dealers(draft)[0]
-    return create_record(draft, best_dealer, role="dealer")
+def create_order(req: CreateMatchRequest) -> MatchCreateResponse:
+    options = build_options(req.draft)
+    chosen = next((o for o in options if o["id"] == req.partner_id), None) if req.partner_id else None
+    if chosen is None:
+        chosen = options[0]  # no explicit pick -> fall back to the top-ranked dealer
+    return create_record(req.draft, chosen)
 
 
 @router.get("/{order_id}")

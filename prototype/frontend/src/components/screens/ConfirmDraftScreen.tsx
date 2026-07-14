@@ -90,25 +90,29 @@ export default function ConfirmDraftScreen({
         </div>
       )}
 
+      {/* Farmers rarely say every field. Show what was understood and mark the rest as
+          "not set" / "market price" rather than showing 0 — the options screen fills the gaps. */}
       <Card className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <Wheat size={22} className="text-primary" />
-          <span className="text-lg font-semibold">{draft.commodity}</span>
+          <span className="text-lg font-semibold">{draft.commodity || t.notSet}</span>
         </div>
-        <div className="flex items-center gap-3 pl-8.5">
-          <span className="text-lg">
-            {draft.quantity} {draft.unit}
-          </span>
-        </div>
+        {draft.quantity > 0 && (
+          <div className="flex items-center gap-3 pl-8.5">
+            <span className="text-lg">
+              {draft.quantity} {draft.unit}
+            </span>
+          </div>
+        )}
         <div className="flex items-center gap-3">
           <IndianRupee size={22} className="text-primary" />
           <span className="text-lg">
-            {draft.price} / {draft.unit}
+            {draft.price > 0 ? `${draft.price} / ${draft.unit || t.notSet}` : t.marketPrice}
           </span>
         </div>
         <div className="flex items-center gap-3">
           <MapPin size={22} className="text-primary" />
-          <span className="text-lg">{draft.location}</span>
+          <span className="text-lg">{draft.location || t.notSet}</span>
         </div>
       </Card>
 

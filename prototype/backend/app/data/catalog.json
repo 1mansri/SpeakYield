@@ -4,25 +4,53 @@
       "id": "b1",
       "name": "Ramesh Traders",
       "commodities": ["Tomato", "Onion"],
+      "price": 22,
       "price_min": 15,
       "price_max": 25,
-      "location": "Kharagpur"
+      "location": "Kharagpur",
+      "distance_km": 2.3,
+      "rating": 4.6,
+      "reviews": 128,
+      "review": "Pays on time, fair weighing at pickup."
     },
     {
       "id": "b2",
       "name": "Kolkata Fresh Mart",
       "commodities": ["Tomato", "Potato", "Rice"],
+      "price": 25,
       "price_min": 10,
       "price_max": 30,
-      "location": "Kolkata"
+      "location": "Kolkata",
+      "distance_km": 18.0,
+      "rating": 4.8,
+      "reviews": 342,
+      "review": "Best rates in the region, but pickup can be slow."
     },
     {
       "id": "b3",
       "name": "Midnapore Wholesale",
       "commodities": ["Rice", "Wheat"],
+      "price": 19,
       "price_min": 5,
       "price_max": 40,
-      "location": "Midnapore"
+      "location": "Midnapore",
+      "distance_km": 9.5,
+      "rating": 4.1,
+      "reviews": 64,
+      "review": "Reliable buyer, occasional grading disputes."
+    },
+    {
+      "id": "b4",
+      "name": "Haldia Mandi Agent",
+      "commodities": ["Tomato", "Onion", "Potato"],
+      "price": 21,
+      "price_min": 12,
+      "price_max": 28,
+      "location": "Haldia",
+      "distance_km": 14.0,
+      "rating": 4.4,
+      "reviews": 97,
+      "review": "Good rates, brings own transport for large lots."
     }
   ],
   "dealers": [
@@ -32,7 +60,11 @@
       "inputs": ["Urea fertiliser", "Seeds", "Pesticide"],
       "price": 280,
       "coverage_km": 15,
-      "location": "Kharagpur"
+      "location": "Kharagpur",
+      "distance_km": 2.3,
+      "rating": 4.5,
+      "reviews": 156,
+      "review": "Genuine stock, helpful on dosage advice."
     },
     {
       "id": "d2",
@@ -40,7 +72,11 @@
       "inputs": ["Urea fertiliser", "DAP", "Seeds"],
       "price": 300,
       "coverage_km": 25,
-      "location": "Kharagpur"
+      "location": "Kharagpur",
+      "distance_km": 3.1,
+      "rating": 4.7,
+      "reviews": 210,
+      "review": "Premium brands, slightly higher priced."
     },
     {
       "id": "d3",
@@ -48,7 +84,23 @@
       "inputs": ["Urea fertiliser", "Pesticide", "DAP"],
       "price": 265,
       "coverage_km": 20,
-      "location": "Midnapore"
+      "location": "Midnapore",
+      "distance_km": 9.5,
+      "rating": 4.2,
+      "reviews": 73,
+      "review": "Cheapest urea nearby, stock runs out fast."
+    },
+    {
+      "id": "d4",
+      "name": "Bengal Farm Inputs",
+      "inputs": ["Urea fertiliser", "DAP", "Seeds", "Pesticide"],
+      "price": 272,
+      "coverage_km": 30,
+      "location": "Haldia",
+      "distance_km": 13.0,
+      "rating": 4.3,
+      "reviews": 118,
+      "review": "Wide range, free home delivery above 5 bags."
     }
   ],
   "listings": [

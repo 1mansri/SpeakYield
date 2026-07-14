@@ -12,6 +12,23 @@ export interface Draft {
   confidence: number;
 }
 
+export type PartnerTag = "best_price" | "nearest" | "top_rated";
+
+// A buyer (when selling) or dealer (when buying) the farmer can choose between —
+// the unit shown on the options / price-discovery screen.
+export interface PartnerOption {
+  id: string;
+  name: string;
+  role: "buyer" | "dealer";
+  price: number;
+  distanceKm: number;
+  rating: number;
+  reviews: number;
+  review: string;
+  location: string;
+  tags: PartnerTag[];
+}
+
 export interface MatchPartner {
   name: string;
   distanceKm: number;

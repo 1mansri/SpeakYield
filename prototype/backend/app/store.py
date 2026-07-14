@@ -5,12 +5,12 @@ import time
 from typing import Any
 
 from app.catalog import CATALOG
-from app.matching import mock_distance_km
 from app.schemas import (
     DeliveryPartnerInfo,
     MatchCreateResponse,
-    MatchedPartner,
     OrderStep,
+    PartnerOption,
+    ReviewRequest,
     StatusResponse,
     VoiceDraft,
 )
@@ -18,6 +18,7 @@ from app.schemas import (
 logger = logging.getLogger("speak_yield.match")
 
 RECORDS: dict[str, dict[str, Any]] = {}
+REVIEWS: list[dict[str, Any]] = []
 
 # Fast, demo-paced thresholds (seconds since creation) — not meant to simulate
 # real logistics timing, just to make the stepper visibly progress during a live demo.
@@ -37,13 +38,11 @@ def _compute_status(created_at: float) -> OrderStep:
     return "delivered"
 
 
-def create_record(draft: VoiceDraft, partner: dict[str, Any], role: str) -> MatchCreateResponse:
+def create_record(draft: VoiceDraft, option: dict[str, Any]) -> MatchCreateResponse:
+    """Persist a listing/order against the partner the farmer chose (`option` is a
+    built option dict from `matching.build_options`)."""
     record_id = secrets.token_hex(4)
-    match = MatchedPartner(
-        name=partner["name"],
-        role=role,  # type: ignore[arg-type]
-        distance_km=mock_distance_km(partner["location"], draft.location),
-    )
+    match = PartnerOption(**option)
     delivery = DeliveryPartnerInfo(**random.choice(CATALOG["delivery_partners"]))
 
     RECORDS[record_id] = {
@@ -53,16 +52,39 @@ def create_record(draft: VoiceDraft, partner: dict[str, Any], role: str) -> Matc
         "delivery": delivery,
     }
     logger.info(
-        "MATCH: %s %r -> %s %r (%.1f km), delivery=%s [id=%s]",
+        "MATCH: %s %r -> %s %r (%.1f km, ₹%s, %.1f★), delivery=%s [id=%s]",
         draft.action,
         draft.commodity,
-        role,
+        match.role,
         match.name,
         match.distance_km,
+        match.price,
+        match.rating,
         delivery.name,
         record_id,
     )
     return MatchCreateResponse(id=record_id, draft=draft, match=match, delivery=delivery)
+
+
+def add_review(review: ReviewRequest) -> None:
+    record = RECORDS.get(review.record_id)
+    partner_name = record["match"].name if record else "unknown"
+    REVIEWS.append(
+        {
+            "record_id": review.record_id,
+            "partner": partner_name,
+            "rating": review.rating,
+            "comment": review.comment,
+            "created_at": time.time(),
+        }
+    )
+    logger.info(
+        "REVIEW: %d★ for %r %s [id=%s]",
+        review.rating,
+        partner_name,
+        f"— {review.comment!r}" if review.comment else "",
+        review.record_id,
+    )
 
 
 def get_status(record_id: str) -> StatusResponse | None:

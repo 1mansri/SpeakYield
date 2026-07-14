@@ -60,3 +60,53 @@ def match_dealers(draft: VoiceDraft) -> list[dict[str, Any]]:
 
 def mock_distance_km(partner_location: str, draft_location: str) -> float:
     return 2.3 if partner_location.strip().lower() == draft_location.strip().lower() else 12.5
+
+
+def get_partner(action: str, partner_id: str) -> dict[str, Any] | None:
+    """Look up a raw catalog partner by id, from the pool the action implies
+    (sell -> buyers, buy -> dealers)."""
+    pool = CATALOG["buyers"] if action == "sell" else CATALOG["dealers"]
+    for partner in pool:
+        if partner["id"] == partner_id:
+            return partner
+    return None
+
+
+def _pros_tags(action: str, partner: dict[str, Any], pool: list[dict[str, Any]]) -> list[str]:
+    """Which pros this partner leads on, relative to the others shown. For selling,
+    a higher price is the farmer's win; for buying, a lower price is."""
+    tags: list[str] = []
+    if action == "sell":
+        if partner["price"] == max(p["price"] for p in pool):
+            tags.append("best_price")
+    else:
+        if partner["price"] == min(p["price"] for p in pool):
+            tags.append("best_price")
+    if partner["distance_km"] == min(p["distance_km"] for p in pool):
+        tags.append("nearest")
+    if partner["rating"] == max(p["rating"] for p in pool):
+        tags.append("top_rated")
+    return tags
+
+
+def _to_option(action: str, partner: dict[str, Any], pool: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "id": partner["id"],
+        "name": partner["name"],
+        "role": "buyer" if action == "sell" else "dealer",
+        "price": float(partner["price"]),
+        "distance_km": float(partner["distance_km"]),
+        "rating": float(partner["rating"]),
+        "reviews": int(partner["reviews"]),
+        "review": partner["review"],
+        "location": partner["location"],
+        "tags": _pros_tags(action, partner, pool),
+    }
+
+
+def build_options(draft: VoiceDraft) -> list[dict[str, Any]]:
+    """Ranked list of partners the farmer can choose between, each carrying price /
+    distance / rating / review plus the pros it leads on. This is the price-discovery
+    surface: the farmer who didn't state a price sees who's trading at what."""
+    ranked = match_buyers(draft) if draft.action == "sell" else match_dealers(draft)
+    return [_to_option(draft.action, partner, ranked) for partner in ranked]

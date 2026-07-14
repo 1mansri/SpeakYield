@@ -61,10 +61,26 @@ class LoginResponse(BaseModel):
     user: UserProfile
 
 
-class MatchedPartner(BaseModel):
+class PartnerOption(BaseModel):
+    """A buyer (when selling) or dealer (when buying) the farmer can choose between.
+    Carries everything the farmer weighs a choice on — price, distance, rating, a
+    one-line review — plus computed `tags` (e.g. "best_price", "nearest") so the UI
+    can surface the pros of each option at a glance."""
+
+    id: str
     name: str
     role: Literal["buyer", "dealer"]
+    price: float
     distance_km: float
+    rating: float
+    reviews: int
+    review: str
+    location: str
+    tags: list[str]
+
+
+class OptionsResponse(BaseModel):
+    options: list[PartnerOption]
 
 
 class DeliveryPartnerInfo(BaseModel):
@@ -72,10 +88,19 @@ class DeliveryPartnerInfo(BaseModel):
     vehicle: str
 
 
+class CreateMatchRequest(BaseModel):
+    """Create a record against a partner the farmer explicitly picked on the options
+    screen. `partner_id` is optional — if omitted, the backend falls back to the
+    top-ranked option, preserving the old auto-match behaviour."""
+
+    draft: VoiceDraft
+    partner_id: str | None = None
+
+
 class MatchCreateResponse(BaseModel):
     id: str
     draft: VoiceDraft
-    match: MatchedPartner
+    match: PartnerOption
     delivery: DeliveryPartnerInfo
 
 
@@ -85,5 +110,15 @@ OrderStep = Literal["confirmed", "matched", "picked-up", "delivered"]
 class StatusResponse(BaseModel):
     id: str
     status: OrderStep
-    match: MatchedPartner
+    match: PartnerOption
     delivery: DeliveryPartnerInfo
+
+
+class ReviewRequest(BaseModel):
+    record_id: str
+    rating: int = Field(ge=1, le=5)
+    comment: str = ""
+
+
+class ReviewResponse(BaseModel):
+    ok: bool

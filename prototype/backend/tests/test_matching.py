@@ -1,4 +1,4 @@
-from app.matching import match_buyers, match_dealers, mock_distance_km
+from app.matching import build_options, get_partner, match_buyers, match_dealers, mock_distance_km
 from app.schemas import VoiceDraft
 
 
@@ -37,7 +37,7 @@ def test_match_buyers_prefers_commodity_and_location_match():
 
 def test_match_buyers_falls_back_when_commodity_unknown():
     results = match_buyers(_sell_draft(commodity="Mango", location="Nowhere"))
-    assert len(results) == 3  # always returns every buyer, ranked — never a dead end
+    assert len(results) == 4  # always returns every buyer, ranked — never a dead end
 
 
 def test_match_buyers_price_fit_can_flip_ranking_between_equal_commodity_matches():
@@ -62,3 +62,36 @@ def test_match_dealers_never_empty_for_unknown_input():
 
 def test_mock_distance_km_same_location_is_closer():
     assert mock_distance_km("Kharagpur", "Kharagpur") < mock_distance_km("Kolkata", "Kharagpur")
+
+
+def test_build_options_returns_every_partner_with_review_fields():
+    options = build_options(_sell_draft())
+    assert len(options) == 4
+    first = options[0]
+    assert {"id", "name", "role", "price", "distance_km", "rating", "reviews", "review", "tags"} <= set(first)
+    assert first["role"] == "buyer"
+
+
+def test_build_options_tags_best_price_by_action():
+    # Selling: the highest-paying buyer earns the best_price tag (farmer earns more).
+    sell = build_options(_sell_draft())
+    top_paid = max(sell, key=lambda o: o["price"])
+    assert "best_price" in top_paid["tags"]
+
+    # Buying: the cheapest dealer earns best_price (farmer pays less).
+    buy = build_options(_buy_draft())
+    cheapest = min(buy, key=lambda o: o["price"])
+    assert "best_price" in cheapest["tags"]
+
+
+def test_build_options_handles_missing_price():
+    # Farmer who never stated a price still gets the full ranked option list.
+    options = build_options(_buy_draft(price=0))
+    assert len(options) == 4
+    assert all(o["price"] > 0 for o in options)  # options carry the market prices
+
+
+def test_get_partner_finds_by_action_pool():
+    assert get_partner("sell", "b1")["name"] == "Ramesh Traders"
+    assert get_partner("buy", "d1")["name"] == "Krishi Bhandar"
+    assert get_partner("sell", "nope") is None

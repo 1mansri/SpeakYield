@@ -8,11 +8,13 @@ import HomeScreen from "@/components/screens/HomeScreen";
 import ListeningScreen from "@/components/screens/ListeningScreen";
 import LoadingScreen from "@/components/screens/LoadingScreen";
 import ConfirmDraftScreen from "@/components/screens/ConfirmDraftScreen";
+import OptionsScreen from "@/components/screens/OptionsScreen";
 import MatchResultScreen from "@/components/screens/MatchResultScreen";
 import OrderStatusScreen from "@/components/screens/OrderStatusScreen";
+import ReviewScreen from "@/components/screens/ReviewScreen";
 import Button from "@/components/ui/Button";
-import { Action, DeliveryPartner, Draft, Language, MatchPartner, User } from "@/lib/types";
-import { createListing, createOrder, extractIntent, transcribe } from "@/lib/api";
+import { Action, DeliveryPartner, Draft, Language, PartnerOption, User } from "@/lib/types";
+import { createMatch, extractIntent, getOptions, submitReview, transcribe } from "@/lib/api";
 import { normalizeLanguage } from "@/lib/language";
 
 type Screen =
@@ -22,9 +24,12 @@ type Screen =
   | "listening"
   | "processing"
   | "confirm"
+  | "finding-options"
+  | "options"
   | "matching"
   | "match"
   | "order"
+  | "review"
   | "error";
 
 export default function App() {
@@ -36,8 +41,9 @@ export default function App() {
 
   const [transcript, setTranscript] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [options, setOptions] = useState<PartnerOption[]>([]);
   const [recordId, setRecordId] = useState<string | null>(null);
-  const [match, setMatch] = useState<MatchPartner | null>(null);
+  const [match, setMatch] = useState<PartnerOption | null>(null);
   const [delivery, setDelivery] = useState<DeliveryPartner | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -53,6 +59,16 @@ export default function App() {
     setErrorMessage(message);
     setPreviousScreen(backTo);
     setScreen("error");
+  }
+
+  function resetToHome() {
+    setDraft(null);
+    setOptions([]);
+    setRecordId(null);
+    setMatch(null);
+    setDelivery(null);
+    setTranscript("");
+    setScreen("home");
   }
 
   async function handleRecorded(audio: Blob) {
@@ -75,19 +91,45 @@ export default function App() {
     }
   }
 
+  // Confirm -> price-discovery: fetch who's buying/selling this, then let the farmer choose.
   async function handleConfirm() {
     if (!draft) return;
+    setScreen("finding-options");
+    try {
+      const loaded = await getOptions(draft);
+      setOptions(loaded);
+      setScreen("options");
+    } catch {
+      goToError("Couldn't load options right now. Try again.", "confirm");
+    }
+  }
+
+  // Farmer picked a partner -> lock in their price and create the record against them.
+  async function handleChoose(option: PartnerOption) {
+    if (!draft) return;
+    const pricedDraft = { ...draft, price: option.price };
+    setDraft(pricedDraft);
     setScreen("matching");
     try {
-      const result =
-        draft.action === "sell" ? await createListing(draft) : await createOrder(draft);
+      const result = await createMatch(pricedDraft, option.id);
       setRecordId(result.id);
       setMatch(result.match);
       setDelivery(result.delivery);
       setScreen("match");
     } catch {
-      goToError("Couldn't find a match right now. Try again.", "confirm");
+      goToError("Couldn't confirm that choice. Try again.", "options");
     }
+  }
+
+  async function handleReviewSubmit(rating: number, comment: string) {
+    if (recordId) {
+      try {
+        await submitReview(recordId, rating, comment);
+      } catch {
+        // Review is a nice-to-have — never block the farmer's return home on it.
+      }
+    }
+    resetToHome();
   }
 
   return (
@@ -134,7 +176,19 @@ export default function App() {
         />
       )}
 
-      {screen === "matching" && <LoadingScreen text="Finding a match..." />}
+      {screen === "finding-options" && <LoadingScreen text="Finding your options..." />}
+
+      {screen === "options" && draft && (
+        <OptionsScreen
+          language={activeLanguage}
+          draft={draft}
+          options={options}
+          onBack={() => setScreen("confirm")}
+          onChoose={handleChoose}
+        />
+      )}
+
+      {screen === "matching" && <LoadingScreen text="Confirming..." />}
 
       {screen === "match" && draft && match && delivery && (
         <MatchResultScreen
@@ -142,7 +196,7 @@ export default function App() {
           draft={draft}
           match={match}
           delivery={delivery}
-          onBack={() => setScreen("confirm")}
+          onBack={() => setScreen("options")}
           onConfirmPayment={() => setScreen("order")}
         />
       )}
@@ -153,7 +207,16 @@ export default function App() {
           draft={draft}
           recordId={recordId}
           kind={draft.action === "sell" ? "listings" : "orders"}
-          onDone={() => setScreen("home")}
+          onDone={() => setScreen("review")}
+        />
+      )}
+
+      {screen === "review" && match && (
+        <ReviewScreen
+          language={activeLanguage}
+          partnerName={match.name}
+          onSubmit={handleReviewSubmit}
+          onSkip={resetToHome}
         />
       )}
 

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.logging_config import configure_logging
-from app.routers import auth, catalog, listings, orders, voice
+from app.routers import auth, catalog, listings, orders, reviews, voice
 
 configure_logging()
 
@@ -20,6 +20,7 @@ app.include_router(voice.router)
 app.include_router(catalog.router)
 app.include_router(listings.router)
 app.include_router(orders.router)
+app.include_router(reviews.router)
 
 
 @app.get("/api/health")

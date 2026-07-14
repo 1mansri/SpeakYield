@@ -1,4 +1,4 @@
-import { Draft, DeliveryPartner, MatchPartner, OrderStep, User } from "./types";
+import { Action, Draft, DeliveryPartner, PartnerOption, OrderStep, User } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -52,56 +52,94 @@ export async function speak(text: string, language: string): Promise<Blob> {
   return res.blob();
 }
 
+interface BackendPartnerOption {
+  id: string;
+  name: string;
+  role: "buyer" | "dealer";
+  price: number;
+  distance_km: number;
+  rating: number;
+  reviews: number;
+  review: string;
+  location: string;
+  tags: PartnerOption["tags"];
+}
+
 interface BackendMatchResponse {
   id: string;
-  match: { name: string; role: string; distance_km: number };
+  match: BackendPartnerOption;
   delivery: { name: string; vehicle: string };
 }
 
 interface MatchAndDelivery {
   id: string;
-  match: MatchPartner;
+  match: PartnerOption;
   delivery: DeliveryPartner;
 }
 
-function toMatchAndDelivery(res: BackendMatchResponse): MatchAndDelivery {
+function toOption(o: BackendPartnerOption): PartnerOption {
   return {
-    id: res.id,
-    match: { name: res.match.name, role: res.match.role, distanceKm: res.match.distance_km },
-    delivery: res.delivery,
+    id: o.id,
+    name: o.name,
+    role: o.role,
+    price: o.price,
+    distanceKm: o.distance_km,
+    rating: o.rating,
+    reviews: o.reviews,
+    review: o.review,
+    location: o.location,
+    tags: o.tags,
   };
 }
 
-export async function createListing(draft: Draft): Promise<MatchAndDelivery> {
-  const res = await fetch(`${API_URL}/api/listings`, {
+function toMatchAndDelivery(res: BackendMatchResponse): MatchAndDelivery {
+  return { id: res.id, match: toOption(res.match), delivery: res.delivery };
+}
+
+const kindFor = (action: Action) => (action === "sell" ? "listings" : "orders");
+
+// Price-discovery: who is buying/selling this, ranked, so the farmer picks rather than
+// being auto-matched. `listings` -> buyers to sell to; `orders` -> dealers to buy from.
+export async function getOptions(draft: Draft): Promise<PartnerOption[]> {
+  const res = await fetch(`${API_URL}/api/${kindFor(draft.action)}/options`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(draft),
   });
-  if (!res.ok) throw new ApiError("Could not create listing");
+  if (!res.ok) throw new ApiError("Could not load options");
+  const data: { options: BackendPartnerOption[] } = await res.json();
+  return data.options.map(toOption);
+}
+
+export async function createMatch(draft: Draft, partnerId: string): Promise<MatchAndDelivery> {
+  const res = await fetch(`${API_URL}/api/${kindFor(draft.action)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ draft, partner_id: partnerId }),
+  });
+  if (!res.ok) throw new ApiError("Could not create match");
   return toMatchAndDelivery(await res.json());
 }
 
-export async function createOrder(draft: Draft): Promise<MatchAndDelivery> {
-  const res = await fetch(`${API_URL}/api/orders`, {
+export async function submitReview(
+  recordId: string,
+  rating: number,
+  comment: string,
+): Promise<void> {
+  const res = await fetch(`${API_URL}/api/reviews`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(draft),
+    body: JSON.stringify({ record_id: recordId, rating, comment }),
   });
-  if (!res.ok) throw new ApiError("Could not create order");
-  return toMatchAndDelivery(await res.json());
+  if (!res.ok) throw new ApiError("Could not submit review");
 }
 
 export async function getStatus(
   kind: "listings" | "orders",
   id: string,
-): Promise<{ status: OrderStep; match: MatchPartner; delivery: DeliveryPartner }> {
+): Promise<{ status: OrderStep; match: PartnerOption; delivery: DeliveryPartner }> {
   const res = await fetch(`${API_URL}/api/${kind}/${id}`);
   if (!res.ok) throw new ApiError("Could not fetch status");
   const data: BackendMatchResponse & { status: OrderStep } = await res.json();
-  return {
-    status: data.status,
-    match: { name: data.match.name, role: data.match.role, distanceKm: data.match.distance_km },
-    delivery: data.delivery,
-  };
+  return { status: data.status, match: toOption(data.match), delivery: data.delivery };
 }
