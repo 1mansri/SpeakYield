@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { ArrowLeft, CheckCircle, IndianRupee, MapPin, Star, Truck, Wheat } from "lucide-react";
-import { DeliveryPartner, Draft, Language, PartnerOption } from "@/lib/types";
+import { CommandResult, DeliveryPartner, Draft, Language, PartnerOption } from "@/lib/types";
 import { copy } from "@/lib/copy";
+import { playText } from "@/lib/tts";
+import AnswerMic from "@/components/AnswerMic";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 
@@ -23,6 +26,17 @@ export default function MatchResultScreen({
 }) {
   const t = copy[language];
   const unit = draft.unit || "unit";
+
+  useEffect(() => {
+    const speech = playText(t.promptPay, language);
+    return () => speech.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleAnswer(result: CommandResult) {
+    if (result.intent === "pay") onConfirmPayment();
+    else if (result.intent === "back") onBack();
+  }
 
   return (
     <div className="flex flex-1 flex-col gap-6 py-4">
@@ -76,7 +90,8 @@ export default function MatchResultScreen({
         </div>
       </Card>
 
-      <div className="mt-auto">
+      <div className="mt-auto flex flex-col gap-4">
+        <AnswerMic language={language} decision="pay" onResult={handleAnswer} />
         <Button variant="accent" onClick={onConfirmPayment}>
           {t.confirmPayment}
         </Button>

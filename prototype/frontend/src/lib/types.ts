@@ -42,6 +42,19 @@ export interface DeliveryPartner {
 
 export type OrderStep = "confirmed" | "matched" | "picked-up" | "delivered";
 
+// A voice-answered decision on a screen. `decision` selects which intents the backend
+// may return; `AnswerMic` records the answer and hands back the parsed CommandResult.
+export type Decision = "confirm" | "choose" | "pay" | "done" | "review" | "language";
+
+export interface CommandResult {
+  intent: string;
+  index: number;
+  rating: number;
+  comment: string;
+  language: string;
+  confidence: number;
+}
+
 export interface User {
   id: string;
   name: string;

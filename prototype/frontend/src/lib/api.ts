@@ -1,4 +1,13 @@
-import { Action, Draft, DeliveryPartner, PartnerOption, OrderStep, User } from "./types";
+import {
+  Action,
+  CommandResult,
+  Decision,
+  Draft,
+  DeliveryPartner,
+  PartnerOption,
+  OrderStep,
+  User,
+} from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -39,6 +48,24 @@ export async function extractIntent(transcript: string, language: string): Promi
     body: JSON.stringify({ transcript, language }),
   });
   if (!res.ok) throw new ApiError("Intent extraction failed");
+  return res.json();
+}
+
+// Map a farmer's spoken answer on a decision screen to a structured intent. `choices`
+// (option labels) is only used for the "choose" decision so the model can resolve
+// "the cheapest one" / a partner name to an index.
+export async function parseCommand(
+  transcript: string,
+  language: string,
+  decision: Decision,
+  choices?: string[],
+): Promise<CommandResult> {
+  const res = await fetch(`${API_URL}/api/voice/command`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ transcript, language, decision, choices: choices ?? [] }),
+  });
+  if (!res.ok) throw new ApiError("Command parsing failed");
   return res.json();
 }
 

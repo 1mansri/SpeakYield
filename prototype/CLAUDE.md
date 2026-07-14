@@ -7,8 +7,9 @@ This `prototype/` folder is a **hardcoded-data demo**, fully separate from the r
 - Backend: Python + FastAPI, `uv`-managed.
 - Voice pipeline: Sarvam AI, all three stages — hosted API calls, no self-hosted container. Requires `SARVAM_API_KEY`.
   - STT: Saaras (`saaras:v3`).
-  - Intent extraction (LLM): chat completions (`sarvam-30b`/`sarvam-105b`), structured via `response_format: json_schema`.
-  - TTS: Bulbul (`bulbul:v3`).
+  - Intent extraction (LLM): chat completions (`sarvam-30b`/`sarvam-105b`), structured via `response_format: json_schema`. Two uses: the opening-request draft (`/api/voice/intent`) and per-screen decision answers (`/api/voice/command`).
+  - TTS: Bulbul (`bulbul:v3`) — Confirm-Draft read-back and each decision screen's spoken prompt.
+- Voice-driven answers: every decision screen carries an `AnswerMic` (tap-to-answer) so confirm/choose/pay/done/rate/language are voice-answerable; on-screen buttons kept as fallback. See `docs/PROTOTYPE_DESIGN.md §7.1` and the PHASES.md end addendum.
 - Data: fixed JSON dataset, no database — `app/data/catalog.json` (buyers/dealers/listings) and `app/data/users.json` (mock login users). In-memory record store for listings/orders (`app/store.py`).
 
 ## Folder layout
@@ -17,17 +18,18 @@ prototype/
   docs/       planning docs — PROTOTYPE.md, PROTOTYPE_DESIGN.md, PHASES.md, SETUP_GUIDE.md, DESIGN_TOOLING.md, DEPLOYMENT.md
   frontend/   Next.js app
     src/app/page.tsx            screen state machine
-    src/components/screens/     Login, Welcome, Home, Listening, Loading, ConfirmDraft, MatchResult, OrderStatus
-    src/lib/                    api.ts, recorder.ts, readback.ts, copy.ts, types.ts, language.ts
+    src/components/screens/     Login, Welcome, Home, Listening, Loading, ConfirmDraft, Options, MatchResult, OrderStatus, Review
+    src/components/AnswerMic.tsx  reusable tap-to-answer mic (decision screens)
+    src/lib/                    api.ts, recorder.ts, readback.ts, tts.ts, copy.ts, types.ts, language.ts
     e2e/happy-path.spec.ts      Playwright smoke test (mocked backend)
   backend/    FastAPI app
-    app/routers/                auth (mock login), voice (Sarvam STT/intent/TTS), catalog, listings, orders
+    app/routers/                auth (mock login), voice (Sarvam STT/intent/command/TTS), catalog, listings, orders, reviews
     app/matching.py, store.py, schemas.py, prompts.py, config.py, logging_config.py
     tests/test_matching.py      pytest
 ```
 
 ## Status
-All build phases (0–12 in `docs/PHASES.md`) are implemented: the full voice flow runs end-to-end (real Sarvam calls, real catalog matching, live order stepper). Per-phase "Built:" notes and known limitations are in `docs/PHASES.md`.
+All build phases (0–12 in `docs/PHASES.md`) are implemented: the full voice flow runs end-to-end (real Sarvam calls, real catalog matching, live order stepper). Post-plan additions (see the PHASES.md end addendum): price-discovery Options + Review screens, and fully voice-driven decision answers (`AnswerMic` + `/api/voice/command`). Per-phase "Built:" notes and known limitations are in `docs/PHASES.md`.
 
 ## Conventions
 - Follow `docs/PROTOTYPE_DESIGN.md` for colour palette, typography, icon set, and wireframes exactly — no blue/purple anywhere.

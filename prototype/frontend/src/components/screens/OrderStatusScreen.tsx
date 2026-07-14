@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle, IndianRupee } from "lucide-react";
-import { Draft, Language, OrderStep } from "@/lib/types";
+import { CommandResult, Draft, Language, OrderStep } from "@/lib/types";
 import { copy } from "@/lib/copy";
 import { MOCK_FEES, ORDER_STEPS } from "@/lib/mockData";
 import { getStatus } from "@/lib/api";
+import { playText } from "@/lib/tts";
+import AnswerMic from "@/components/AnswerMic";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 
@@ -46,6 +48,16 @@ export default function OrderStatusScreen({
       clearInterval(interval);
     };
   }, [kind, recordId]);
+
+  useEffect(() => {
+    const speech = playText(t.promptDone, language);
+    return () => speech.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleAnswer(result: CommandResult) {
+    if (result.intent === "done") onDone();
+  }
 
   const currentStepIndex = ORDER_STEPS.findIndex((s) => s.key === status);
   const gross = draft.quantity * draft.price;
@@ -95,7 +107,8 @@ export default function OrderStatusScreen({
         ))}
       </Card>
 
-      <div className="mt-auto">
+      <div className="mt-auto flex flex-col gap-4">
+        <AnswerMic language={language} decision="done" onResult={handleAnswer} />
         <Button variant="primary" onClick={onDone}>
           {t.done}
         </Button>

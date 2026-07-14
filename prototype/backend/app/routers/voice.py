@@ -13,8 +13,21 @@ from app.config import (
     SARVAM_TTS_MODEL,
     SARVAM_TTS_URL,
 )
-from app.prompts import INTENT_SYSTEM_PROMPT
-from app.schemas import INTENT_JSON_SCHEMA, IntentRequest, SpeakRequest, VoiceDraft
+from app.prompts import (
+    COMMAND_INSTRUCTIONS,
+    INTENT_SYSTEM_PROMPT,
+    command_system_prompt,
+)
+from app.schemas import (
+    COMMAND_INTENTS,
+    INTENT_JSON_SCHEMA,
+    CommandRequest,
+    CommandResponse,
+    IntentRequest,
+    SpeakRequest,
+    VoiceDraft,
+    command_json_schema,
+)
 
 router = APIRouter(prefix="/api/voice", tags=["voice"])
 logger = logging.getLogger("speak_yield.voice")
@@ -139,6 +152,78 @@ async def extract_intent(payload: IntentRequest) -> VoiceDraft:
         draft.confidence,
     )
     return draft
+
+
+@router.post("/command")
+async def parse_command(payload: CommandRequest) -> CommandResponse:
+    """Map a spoken answer on a decision screen to a structured intent. Mirrors /intent:
+    Sarvam chat + strict JSON schema, with the intent enum narrowed to the decision.
+    On any failure to parse, returns intent='unknown' so the caller keeps the buttons."""
+    _require_api_key()
+
+    intents = COMMAND_INTENTS[payload.decision]
+    system_prompt = command_system_prompt(
+        payload.decision, intents, COMMAND_INSTRUCTIONS[payload.decision]
+    )
+
+    user_content = payload.transcript
+    if payload.decision == "choose" and payload.choices:
+        numbered = "\n".join(f"{i}: {label}" for i, label in enumerate(payload.choices))
+        user_content = f"CHOICES:\n{numbered}\n\nFARMER'S ANSWER: {payload.transcript}"
+
+    unknown = CommandResponse(intent="unknown", confidence=0.0)
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            SARVAM_CHAT_URL,
+            headers={
+                "api-subscription-key": SARVAM_API_KEY,
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": SARVAM_CHAT_MODEL,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content},
+                ],
+                "temperature": 0.1,
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "voice_command",
+                        "schema": command_json_schema(payload.decision),
+                        "strict": True,
+                    },
+                },
+            },
+        )
+
+    if response.status_code != 200:
+        logger.error("COMMAND chat failed (%s): %s", response.status_code, response.text)
+        raise HTTPException(status_code=502, detail=f"Sarvam chat error: {response.text}")
+
+    content = response.json()["choices"][0]["message"]["content"]
+    if content is None:
+        logger.warning("COMMAND: null content for %r (%s)", payload.transcript, payload.decision)
+        return unknown
+
+    try:
+        command = CommandResponse.model_validate_json(content)
+    except ValidationError:
+        logger.warning("COMMAND: unparseable content=%r (%s)", content, payload.decision)
+        return unknown
+
+    logger.info(
+        "COMMAND[%s]: %r -> intent=%s index=%s rating=%s lang=%s conf=%.2f",
+        payload.decision,
+        payload.transcript,
+        command.intent,
+        command.index,
+        command.rating,
+        command.language,
+        command.confidence,
+    )
+    return command
 
 
 @router.post("/speak")

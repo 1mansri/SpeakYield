@@ -1,7 +1,10 @@
 "use client";
 
-import { Language } from "@/lib/types";
+import { useEffect } from "react";
+import { CommandResult, Language } from "@/lib/types";
 import { copy } from "@/lib/copy";
+import { playText } from "@/lib/tts";
+import AnswerMic from "@/components/AnswerMic";
 import Button from "@/components/ui/Button";
 
 const LANGUAGES: { code: Language; label: string }[] = [
@@ -19,6 +22,23 @@ export default function WelcomeScreen({
   onSelect: (lang: Language) => void;
   onContinue: () => void;
 }) {
+  const promptLang = selected ?? "hi";
+
+  useEffect(() => {
+    const speech = playText(copy[promptLang].promptWelcome, promptLang);
+    return () => speech.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleAnswer(result: CommandResult) {
+    if (result.intent === "select" && ["hi", "bn", "en"].includes(result.language)) {
+      const lang = result.language as Language;
+      // Voice pick is the full answer — set the language and move straight on.
+      onSelect(lang);
+      onContinue();
+    }
+  }
+
   return (
     <div className="flex flex-1 flex-col items-center justify-between py-10">
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
@@ -44,7 +64,8 @@ export default function WelcomeScreen({
           </button>
         ))}
 
-        <div className="mt-4">
+        <div className="mt-4 flex flex-col gap-4">
+          <AnswerMic language={promptLang} decision="language" onResult={handleAnswer} />
           <Button variant="accent" disabled={!selected} onClick={onContinue}>
             {copy[selected ?? "hi"].continue}
           </Button>

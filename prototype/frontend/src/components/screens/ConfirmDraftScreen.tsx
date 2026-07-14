@@ -10,10 +10,11 @@ import {
   RotateCcw,
   Wheat,
 } from "lucide-react";
-import { Draft, Language } from "@/lib/types";
+import { CommandResult, Draft, Language } from "@/lib/types";
 import { copy } from "@/lib/copy";
 import { readBackText } from "@/lib/readback";
 import { speak } from "@/lib/api";
+import AnswerMic from "@/components/AnswerMic";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 
@@ -39,11 +40,19 @@ export default function ConfirmDraftScreen({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isLowConfidence = draft.confidence < LOW_CONFIDENCE_THRESHOLD;
 
+  function handleAnswer(result: CommandResult) {
+    if (result.intent === "confirm") onConfirm();
+    else if (result.intent === "retry") onRetry();
+    else if (result.intent === "cancel") onBack();
+  }
+
   useEffect(() => {
     let cancelled = false;
     let objectUrl: string | null = null;
 
-    speak(readBackText(draft, language), language)
+    // Read the draft back, then ask the confirm question aloud — the farmer can answer by
+    // voice (AnswerMic below) or tap Confirm/Retry.
+    speak(`${readBackText(draft, language)}. ${t.promptConfirm}`, language)
       .then((blob) => {
         if (cancelled) return;
         objectUrl = URL.createObjectURL(blob);
@@ -129,15 +138,18 @@ export default function ConfirmDraftScreen({
         )}
       </div>
 
-      <div className="mt-auto flex gap-3">
-        <Button variant="outline" onClick={onRetry}>
-          <RotateCcw size={20} />
-          {t.retry}
-        </Button>
-        <Button variant="accent" onClick={onConfirm}>
-          <CheckCircle size={20} />
-          {t.confirm}
-        </Button>
+      <div className="mt-auto flex flex-col gap-4">
+        <AnswerMic language={language} decision="confirm" onResult={handleAnswer} />
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={onRetry}>
+            <RotateCcw size={20} />
+            {t.retry}
+          </Button>
+          <Button variant="accent" onClick={onConfirm}>
+            <CheckCircle size={20} />
+            {t.confirm}
+          </Button>
+        </div>
       </div>
     </div>
   );

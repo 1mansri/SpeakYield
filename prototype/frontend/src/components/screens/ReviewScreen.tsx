@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Star } from "lucide-react";
-import { Language } from "@/lib/types";
+import { CommandResult, Language } from "@/lib/types";
 import { copy } from "@/lib/copy";
+import { playText } from "@/lib/tts";
+import AnswerMic from "@/components/AnswerMic";
 import Button from "@/components/ui/Button";
 
 export default function ReviewScreen({
@@ -20,6 +22,29 @@ export default function ReviewScreen({
   const t = copy[language];
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
+
+  useEffect(() => {
+    const speech = playText(t.promptReview, language);
+    return () => speech.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleAnswer(result: CommandResult) {
+    if (result.intent === "skip") {
+      onSkip();
+      return;
+    }
+    if (result.intent === "submit") {
+      const stars = result.rating >= 1 && result.rating <= 5 ? result.rating : rating;
+      const note = result.comment || comment;
+      // Reflect what we heard, then submit — but only if we have a rating to send.
+      if (stars >= 1) {
+        setRating(stars);
+        setComment(note);
+        onSubmit(stars, note);
+      }
+    }
+  }
 
   return (
     <div className="flex flex-1 flex-col gap-6 py-4">
@@ -57,7 +82,8 @@ export default function ReviewScreen({
         className="w-full resize-none rounded-2xl border border-border bg-surface p-4 text-base text-text-primary placeholder:text-text-secondary focus:border-primary focus:outline-none"
       />
 
-      <div className="mt-auto flex flex-col gap-3">
+      <div className="mt-auto flex flex-col gap-4">
+        <AnswerMic language={language} decision="review" onResult={handleAnswer} />
         <Button variant="accent" disabled={rating === 0} onClick={() => onSubmit(rating, comment)}>
           {t.submitReview}
         </Button>

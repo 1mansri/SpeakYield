@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Check, IndianRupee, MapPin, Star } from "lucide-react";
-import { Action, Draft, Language, PartnerOption, PartnerTag } from "@/lib/types";
+import { Action, CommandResult, Draft, Language, PartnerOption, PartnerTag } from "@/lib/types";
 import { copy } from "@/lib/copy";
+import { playText } from "@/lib/tts";
+import AnswerMic from "@/components/AnswerMic";
 import Button from "@/components/ui/Button";
 
 function tagLabel(tag: PartnerTag, action: Action, t: Record<string, string>): string {
@@ -30,6 +32,31 @@ export default function OptionsScreen({
   // can just hit Continue, or tap a different card to compare and pick their own.
   const [selectedId, setSelectedId] = useState<string | null>(options[0]?.id ?? null);
   const unit = draft.unit || "unit";
+
+  useEffect(() => {
+    const speech = playText(
+      draft.action === "sell" ? t.promptChooseSell : t.promptChooseBuy,
+      language,
+    );
+    return () => speech.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Describe each option so the parser can resolve "the cheapest", a name, or "first".
+  const choiceLabels = options.map(
+    (o) =>
+      `${o.name} — ₹${o.price}/${unit}, ${o.distanceKm} km away, rated ${o.rating.toFixed(1)}`,
+  );
+
+  function handleAnswer(result: CommandResult) {
+    if (result.intent === "back") {
+      onBack();
+    } else if (result.intent === "choose" && result.index >= 0 && result.index < options.length) {
+      const chosen = options[result.index];
+      setSelectedId(chosen.id);
+      onChoose(chosen);
+    }
+  }
 
   return (
     <div className="flex flex-1 flex-col gap-4 py-4">
@@ -112,7 +139,13 @@ export default function OptionsScreen({
         })}
       </div>
 
-      <div className="mt-auto pt-2">
+      <div className="mt-auto flex flex-col gap-4 pt-2">
+        <AnswerMic
+          language={language}
+          decision="choose"
+          choices={choiceLabels}
+          onResult={handleAnswer}
+        />
         <Button
           variant="accent"
           disabled={!selectedId}

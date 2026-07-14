@@ -38,6 +38,59 @@ class IntentRequest(BaseModel):
     language: str
 
 
+# ---- Voice command (decision screens) ----------------------------------------
+# The farmer answers a decision screen by voice (Confirm/Retry, pick an option,
+# Proceed, Done, rate, pick language). `decision` selects which set of intents is
+# valid; `choices` carries the human-readable option labels for the "choose" screen.
+Decision = Literal["confirm", "choose", "pay", "done", "review", "language"]
+
+# Allowed `intent` values per decision — used to build the strict JSON schema and to
+# tell the model exactly what it may return. Keep in sync with COMMAND_INSTRUCTIONS.
+COMMAND_INTENTS: dict[str, list[str]] = {
+    "confirm": ["confirm", "retry", "cancel", "unknown"],
+    "choose": ["choose", "back", "unknown"],
+    "pay": ["pay", "back", "unknown"],
+    "done": ["done", "unknown"],
+    "review": ["submit", "skip", "unknown"],
+    "language": ["select", "unknown"],
+}
+
+
+def command_json_schema(decision: str) -> dict:
+    """Strict JSON schema for a command response, with the `intent` enum narrowed to
+    the decision's valid intents. All fields are required (strict mode); unused ones
+    carry harmless defaults the model is told to fill (index -1, rating 0, etc.)."""
+    return {
+        "type": "object",
+        "properties": {
+            "intent": {"type": "string", "enum": COMMAND_INTENTS[decision]},
+            "index": {"type": "integer"},
+            "rating": {"type": "integer"},
+            "comment": {"type": "string"},
+            "language": {"type": "string", "enum": ["hi", "bn", "en", ""]},
+            "confidence": {"type": "number"},
+        },
+        "required": ["intent", "index", "rating", "comment", "language", "confidence"],
+        "additionalProperties": False,
+    }
+
+
+class CommandRequest(BaseModel):
+    transcript: str
+    language: str
+    decision: Decision
+    choices: list[str] = []
+
+
+class CommandResponse(BaseModel):
+    intent: str
+    index: int = -1
+    rating: int = 0
+    comment: str = ""
+    language: str = ""
+    confidence: float = Field(ge=0, le=1)
+
+
 class SpeakRequest(BaseModel):
     text: str
     language: str
