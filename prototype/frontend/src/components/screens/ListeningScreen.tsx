@@ -11,10 +11,14 @@ const BAR_COUNT = 5;
 
 export default function ListeningScreen({
   language,
+  hint,
   onCancel,
   onRecorded,
 }: {
   language: Language;
+  /** Commodity the farmer tapped into this from, when they arrived via a demand card
+   *  rather than the mic — shown so the flow keeps the context they picked. */
+  hint?: string;
   onCancel: () => void;
   onRecorded: (audio: Blob) => void;
 }) {
@@ -59,6 +63,11 @@ export default function ListeningScreen({
   return (
     <div className="flex flex-1 flex-col items-center justify-between py-10">
       <div className="flex flex-1 flex-col items-center justify-center gap-8">
+        {hint && !micError && (
+          <span className="rounded-full bg-primary/10 px-4 py-1.5 text-lg font-semibold text-primary">
+            {hint}
+          </span>
+        )}
         {micError ? (
           <>
             <AlertCircle size={40} className="text-error" />

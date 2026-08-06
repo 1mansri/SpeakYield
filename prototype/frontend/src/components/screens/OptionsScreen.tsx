@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, IndianRupee, MapPin, Star } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Check, IndianRupee, MapPin, Star } from "lucide-react";
 import { Action, CommandResult, Draft, Language, PartnerOption, PartnerTag } from "@/lib/types";
-import { copy } from "@/lib/copy";
+import { copy, fill } from "@/lib/copy";
 import { playText } from "@/lib/tts";
 import AnswerMic from "@/components/AnswerMic";
+import SpreadBar, { mandiDelta } from "@/components/SpreadBar";
 import Button from "@/components/ui/Button";
+
+// Enough completed trades on the platform to carry a verified mark.
+const VERIFIED_REVIEW_COUNT = 100;
 
 function tagLabel(tag: PartnerTag, action: Action, t: Record<string, string>): string {
   if (tag === "best_price") return action === "sell" ? t.tagBestPriceSell : t.tagBestPriceBuy;
@@ -18,12 +22,14 @@ export default function OptionsScreen({
   language,
   draft,
   options,
+  mandiPrice,
   onBack,
   onChoose,
 }: {
   language: Language;
   draft: Draft;
   options: PartnerOption[];
+  mandiPrice: number | null;
   onBack: () => void;
   onChoose: (option: PartnerOption) => void;
 }) {
@@ -32,6 +38,8 @@ export default function OptionsScreen({
   // can just hit Continue, or tap a different card to compare and pick their own.
   const [selectedId, setSelectedId] = useState<string | null>(options[0]?.id ?? null);
   const unit = draft.unit || "unit";
+  const prices = options.map((o) => o.price);
+  const selectedPrice = options.find((o) => o.id === selectedId)?.price ?? prices[0] ?? 0;
 
   useEffect(() => {
     const speech = playText(
@@ -73,10 +81,25 @@ export default function OptionsScreen({
         <h2 className="text-xl font-bold text-primary">
           {draft.action === "sell" ? t.chooseSell : t.chooseBuy}
         </h2>
-        <p className="mt-1 text-base text-text-secondary">
+        {/* Liquidity, stated plainly: the farmer is being competed for. */}
+        <p className="mt-1 text-base font-semibold text-text-primary">
+          {fill(draft.action === "sell" ? t.biddingSell : t.biddingBuy, { n: options.length })}
+        </p>
+        <p className="mt-0.5 text-base text-text-secondary">
           {draft.action === "sell" ? t.priceHintSell : t.priceHintBuy}
         </p>
       </div>
+
+      {prices.length > 0 && (
+        <SpreadBar
+          language={language}
+          min={Math.min(...prices)}
+          max={Math.max(...prices)}
+          selected={selectedPrice}
+          mandiPrice={mandiPrice}
+          unit={unit}
+        />
+      )}
 
       <div className="flex flex-col gap-3">
         {options.map((option) => {
@@ -95,6 +118,11 @@ export default function OptionsScreen({
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-semibold text-text-primary">{option.name}</span>
+                  {/* Trade volume is the trust signal a marketplace has and a stranger
+                      doesn't — mark the well-reviewed counterparties. */}
+                  {option.reviews >= VERIFIED_REVIEW_COUNT && (
+                    <BadgeCheck size={18} className="text-primary" aria-label={t.verified} />
+                  )}
                   {selected && <Check size={20} className="text-primary" />}
                 </div>
                 <div className="flex items-center gap-1 text-base font-semibold text-text-primary">
@@ -128,10 +156,29 @@ export default function OptionsScreen({
                     {option.location} · {option.distanceKm} {t.kmAway}
                   </span>
                 </div>
-                <div className="flex items-baseline text-lg font-bold text-primary">
-                  <IndianRupee size={16} className="self-center" />
-                  {option.price}
-                  <span className="ml-0.5 text-sm font-normal text-text-secondary">/{unit}</span>
+                <div className="flex flex-col items-end">
+                  <div className="flex items-baseline text-lg font-bold text-primary">
+                    <IndianRupee size={16} className="self-center" />
+                    {option.price}
+                    <span className="ml-0.5 text-sm font-normal text-text-secondary">/{unit}</span>
+                  </div>
+                  {/* What this offer is worth against the local rate — the reason to use
+                      the platform at all, stated per option rather than in a pitch. */}
+                  {(() => {
+                    const delta = mandiDelta(option.price, mandiPrice, draft.action);
+                    if (!delta) return null;
+                    return (
+                      <span
+                        className={`text-sm font-semibold tabular-nums ${
+                          delta.good ? "text-success" : "text-text-secondary"
+                        }`}
+                      >
+                        {delta.key === "atMandi"
+                          ? t.atMandi
+                          : fill(t[delta.key], { d: delta.amount })}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             </button>

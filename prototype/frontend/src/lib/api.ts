@@ -3,7 +3,10 @@ import {
   CommandResult,
   Decision,
   Draft,
+  DealsData,
   DeliveryPartner,
+  Market,
+  OptionsResult,
   PartnerOption,
   OrderStep,
   User,
@@ -79,6 +82,95 @@ export async function speak(text: string, language: string): Promise<Blob> {
   return res.blob();
 }
 
+interface BackendRate {
+  commodity: string;
+  name_hi: string;
+  name_bn: string;
+  unit: string;
+  price: number;
+  delta: number;
+  emoji: string;
+}
+
+interface BackendDemand extends Omit<BackendRate, "price" | "delta"> {
+  buyers: number;
+  price_min: number;
+  price_max: number;
+  mandi_price: number;
+}
+
+// The market dashboard — today's rates plus live demand. One call, because it's the
+// first paint of the app and a second round trip is a visible stall on a slow phone.
+export async function getMarket(): Promise<Market> {
+  const res = await fetch(`${API_URL}/api/market`);
+  if (!res.ok) throw new ApiError("Could not load the market");
+  const data: { rates: BackendRate[]; demand: BackendDemand[] } = await res.json();
+  return {
+    rates: data.rates.map((r) => ({
+      commodity: r.commodity,
+      nameHi: r.name_hi,
+      nameBn: r.name_bn,
+      unit: r.unit,
+      price: r.price,
+      delta: r.delta,
+      emoji: r.emoji,
+    })),
+    demand: data.demand.map((d) => ({
+      commodity: d.commodity,
+      nameHi: d.name_hi,
+      nameBn: d.name_bn,
+      unit: d.unit,
+      emoji: d.emoji,
+      buyers: d.buyers,
+      priceMin: d.price_min,
+      priceMax: d.price_max,
+      mandiPrice: d.mandi_price,
+    })),
+  };
+}
+
+interface BackendDeal {
+  id: string;
+  action: Action;
+  commodity: string;
+  quantity: number;
+  unit: string;
+  price: number;
+  partner: string;
+  status: OrderStep;
+  amount: number;
+  created_at: number;
+}
+
+// The farmer's standing record — live and completed deals, plus earnings. What makes
+// the app a place they have a history in rather than a session that resets.
+export async function getDeals(userId?: string): Promise<DealsData> {
+  const query = userId ? `?user=${encodeURIComponent(userId)}` : "";
+  const res = await fetch(`${API_URL}/api/deals${query}`);
+  if (!res.ok) throw new ApiError("Could not load deals");
+  const data: {
+    deals: BackendDeal[];
+    earned_this_month: number;
+    deal_count: number;
+  } = await res.json();
+  return {
+    deals: data.deals.map((d) => ({
+      id: d.id,
+      action: d.action,
+      commodity: d.commodity,
+      quantity: d.quantity,
+      unit: d.unit,
+      price: d.price,
+      partner: d.partner,
+      status: d.status,
+      amount: d.amount,
+      createdAt: d.created_at,
+    })),
+    earnedThisMonth: data.earned_this_month,
+    dealCount: data.deal_count,
+  };
+}
+
 interface BackendPartnerOption {
   id: string;
   name: string;
@@ -127,22 +219,26 @@ const kindFor = (action: Action) => (action === "sell" ? "listings" : "orders");
 
 // Price-discovery: who is buying/selling this, ranked, so the farmer picks rather than
 // being auto-matched. `listings` -> buyers to sell to; `orders` -> dealers to buy from.
-export async function getOptions(draft: Draft): Promise<PartnerOption[]> {
+export async function getOptions(draft: Draft): Promise<OptionsResult> {
   const res = await fetch(`${API_URL}/api/${kindFor(draft.action)}/options`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(draft),
   });
   if (!res.ok) throw new ApiError("Could not load options");
-  const data: { options: BackendPartnerOption[] } = await res.json();
-  return data.options.map(toOption);
+  const data: { options: BackendPartnerOption[]; mandi_price: number | null } = await res.json();
+  return { options: data.options.map(toOption), mandiPrice: data.mandi_price };
 }
 
-export async function createMatch(draft: Draft, partnerId: string): Promise<MatchAndDelivery> {
+export async function createMatch(
+  draft: Draft,
+  partnerId: string,
+  userId?: string,
+): Promise<MatchAndDelivery> {
   const res = await fetch(`${API_URL}/api/${kindFor(draft.action)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ draft, partner_id: partnerId }),
+    body: JSON.stringify({ draft, partner_id: partnerId, user_id: userId ?? null }),
   });
   if (!res.ok) throw new ApiError("Could not create match");
   return toMatchAndDelivery(await res.json());

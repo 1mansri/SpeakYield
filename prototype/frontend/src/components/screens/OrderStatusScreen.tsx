@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, IndianRupee } from "lucide-react";
+import { CheckCircle, FileText, IndianRupee, ShieldCheck } from "lucide-react";
 import { CommandResult, Draft, Language, OrderStep } from "@/lib/types";
 import { copy } from "@/lib/copy";
+import { commodityEmoji } from "@/lib/commodities";
 import { MOCK_FEES, ORDER_STEPS } from "@/lib/mockData";
 import { getStatus } from "@/lib/api";
 import { playText } from "@/lib/tts";
@@ -65,14 +66,23 @@ export default function OrderStatusScreen({
 
   return (
     <div className="flex flex-1 flex-col gap-6 py-4">
-      <div className="flex items-center gap-2 text-xl font-bold text-primary">
-        <CheckCircle size={26} />
-        {t.paymentDone}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xl font-bold text-primary">
+          <CheckCircle size={26} />
+          {t.paymentDone}
+        </div>
+        {/* A deal has a number. Paperwork is how rural commerce establishes trust. */}
+        <span className="text-sm tabular-nums text-text-secondary">
+          {t.orderNo} {recordId.toUpperCase()}
+        </span>
       </div>
 
       <Card className="flex flex-col gap-2">
         <div className="flex items-center justify-between text-lg">
-          <span>
+          <span className="flex items-center gap-2">
+            <span aria-hidden className="text-xl">
+              {commodityEmoji(draft.commodity, draft.action)}
+            </span>
             {draft.commodity} · {draft.quantity} {draft.unit}
           </span>
           <span className="flex items-center font-semibold">
@@ -90,19 +100,33 @@ export default function OrderStatusScreen({
         </div>
         <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-lg font-bold text-primary">
           <span>{t.netAmount}</span>
-          <span className="flex items-center">
+          <span className="flex items-center tabular-nums">
             <IndianRupee size={18} />
             {net}
           </span>
         </div>
+
+        {/* Settlement and invoicing, stated plainly — the paperwork a real trade produces. */}
+        <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2 text-sm text-text-secondary">
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck size={16} className="text-primary" />
+            {t.settledUpi}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <FileText size={16} className="text-primary" />
+            {t.gstNote}
+          </span>
+        </div>
       </Card>
 
-      <Card className="flex flex-col gap-4">
+      <Card className="flex flex-col">
         {ORDER_STEPS.map((step, i) => (
           <StatusRow
             key={step.key}
             label={statusLabel(step.key, language)}
             active={i <= currentStepIndex}
+            current={i === currentStepIndex}
+            last={i === ORDER_STEPS.length - 1}
           />
         ))}
       </Card>
@@ -141,15 +165,40 @@ function statusLabel(step: OrderStep, language: Language) {
   return labels[language][step];
 }
 
-function StatusRow({ label, active }: { label: string; active: boolean }) {
+/** One step of the fulfilment rail. The connecting line makes the sequence read as
+ *  physical progress — goods moving — rather than as a list of messages. */
+function StatusRow({
+  label,
+  active,
+  current,
+  last,
+}: {
+  label: string;
+  active: boolean;
+  current: boolean;
+  last: boolean;
+}) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex gap-3">
+      <div className="flex flex-col items-center">
+        <span
+          className={`h-3.5 w-3.5 rounded-full transition-colors duration-300 ${
+            active ? "bg-primary" : "bg-border"
+          } ${current && !last ? "animate-pulse ring-4 ring-primary/20" : ""}`}
+        />
+        {!last && (
+          <span
+            className={`w-0.5 flex-1 transition-colors duration-300 ${
+              active ? "bg-primary" : "bg-border"
+            }`}
+          />
+        )}
+      </div>
       <span
-        className={`h-3 w-3 rounded-full transition-colors duration-300 ${
-          active ? "bg-primary" : "bg-border"
+        className={`pb-5 text-lg ${
+          active ? "font-semibold text-text-primary" : "text-text-secondary"
         }`}
-      />
-      <span className={`text-lg ${active ? "text-text-primary font-semibold" : "text-text-secondary"}`}>
+      >
         {label}
       </span>
     </div>

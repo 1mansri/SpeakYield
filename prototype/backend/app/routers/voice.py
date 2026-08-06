@@ -12,6 +12,7 @@ from app.config import (
     SARVAM_STT_URL,
     SARVAM_TTS_MODEL,
     SARVAM_TTS_URL,
+    VOICE_FALLBACK,
 )
 from app.prompts import (
     COMMAND_INSTRUCTIONS,
@@ -45,8 +46,68 @@ FALLBACK_DRAFT_FIELDS = {
 }
 
 
+# ---- Demo fallback -----------------------------------------------------------
+# Only reachable when VOICE_FALLBACK is on (see config). These are a presentation
+# safety net for a dead venue network — never a substitute for the real pipeline.
+
+
+def _silent_wav(seconds: float = 0.3, rate: int = 8000) -> bytes:
+    """A valid, silent PCM WAV. Read-back is a bonus feature, so when TTS is down the
+    screen should carry on quietly rather than surface an error the farmer can't act on."""
+    frames = int(seconds * rate)
+    data = b"\x00\x00" * frames
+    header = (
+        b"RIFF"
+        + (36 + len(data)).to_bytes(4, "little")
+        + b"WAVEfmt "
+        + (16).to_bytes(4, "little")
+        + (1).to_bytes(2, "little")  # PCM
+        + (1).to_bytes(2, "little")  # mono
+        + rate.to_bytes(4, "little")
+        + (rate * 2).to_bytes(4, "little")
+        + (2).to_bytes(2, "little")
+        + (16).to_bytes(2, "little")
+        + b"data"
+        + len(data).to_bytes(4, "little")
+    )
+    return header + data
+
+
+SILENT_WAV = _silent_wav()
+
+FALLBACK_TRANSCRIPT = "50 किलो टमाटर बेचना है"
+FALLBACK_LANGUAGE = "hi-IN"
+
+FALLBACK_INTENT = {
+    "action": "sell",
+    "commodity": "Tomato",
+    "quantity": 50,
+    "unit": "kg",
+    "price": 0,
+    "location": "Kharagpur",
+    "confidence": 0.9,
+}
+
+# Affirmative answer per decision screen, so a spoken "yes" still advances the flow.
+FALLBACK_COMMAND_INTENT = {
+    "confirm": "confirm",
+    "choose": "choose",
+    "pay": "pay",
+    "done": "done",
+    "review": "submit",
+    "language": "select",
+}
+
+
+def _fallback_or_raise(stage: str, detail: str) -> None:
+    """Raise unless the demo safety net is on, in which case log loudly and continue."""
+    if not VOICE_FALLBACK:
+        raise HTTPException(status_code=502, detail=detail)
+    logger.warning("FALLBACK[%s]: %s", stage, detail)
+
+
 def _require_api_key() -> None:
-    if not SARVAM_API_KEY:
+    if not SARVAM_API_KEY and not VOICE_FALLBACK:
         raise HTTPException(status_code=500, detail="SARVAM_API_KEY not configured")
 
 
@@ -67,23 +128,28 @@ async def transcribe(
     if sarvam_lang:
         data["language_code"] = sarvam_lang
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
-            SARVAM_STT_URL,
-            headers={"api-subscription-key": SARVAM_API_KEY},
-            files={
-                "file": (
-                    audio.filename or "audio.wav",
-                    audio_bytes,
-                    audio.content_type or "audio/wav",
-                )
-            },
-            data=data,
-        )
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                SARVAM_STT_URL,
+                headers={"api-subscription-key": SARVAM_API_KEY},
+                files={
+                    "file": (
+                        audio.filename or "audio.wav",
+                        audio_bytes,
+                        audio.content_type or "audio/wav",
+                    )
+                },
+                data=data,
+            )
+    except httpx.HTTPError as exc:
+        _fallback_or_raise("stt", f"Sarvam STT unreachable: {exc}")
+        return {"transcript": FALLBACK_TRANSCRIPT, "language": FALLBACK_LANGUAGE}
 
     if response.status_code != 200:
         logger.error("STT failed (%s): %s", response.status_code, response.text)
-        raise HTTPException(status_code=502, detail=f"Sarvam STT error: {response.text}")
+        _fallback_or_raise("stt", f"Sarvam STT error: {response.text}")
+        return {"transcript": FALLBACK_TRANSCRIPT, "language": FALLBACK_LANGUAGE}
 
     payload = response.json()
     transcript = payload.get("transcript", "")
@@ -102,33 +168,38 @@ async def transcribe(
 async def extract_intent(payload: IntentRequest) -> VoiceDraft:
     _require_api_key()
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
-            SARVAM_CHAT_URL,
-            headers={
-                "api-subscription-key": SARVAM_API_KEY,
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": SARVAM_CHAT_MODEL,
-                "messages": [
-                    {"role": "system", "content": INTENT_SYSTEM_PROMPT},
-                    {"role": "user", "content": payload.transcript},
-                ],
-                "temperature": 0.1,
-                "response_format": {
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "voice_draft",
-                        "schema": INTENT_JSON_SCHEMA,
-                        "strict": True,
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                SARVAM_CHAT_URL,
+                headers={
+                    "api-subscription-key": SARVAM_API_KEY,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": SARVAM_CHAT_MODEL,
+                    "messages": [
+                        {"role": "system", "content": INTENT_SYSTEM_PROMPT},
+                        {"role": "user", "content": payload.transcript},
+                    ],
+                    "temperature": 0.1,
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "voice_draft",
+                            "schema": INTENT_JSON_SCHEMA,
+                            "strict": True,
+                        },
                     },
                 },
-            },
-        )
+            )
+    except httpx.HTTPError as exc:
+        _fallback_or_raise("intent", f"Sarvam chat unreachable: {exc}")
+        return VoiceDraft(**FALLBACK_INTENT)  # type: ignore[arg-type]
 
     if response.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Sarvam chat error: {response.text}")
+        _fallback_or_raise("intent", f"Sarvam chat error: {response.text}")
+        return VoiceDraft(**FALLBACK_INTENT)  # type: ignore[arg-type]
 
     content = response.json()["choices"][0]["message"]["content"]
     if content is None:
@@ -172,35 +243,49 @@ async def parse_command(payload: CommandRequest) -> CommandResponse:
         user_content = f"CHOICES:\n{numbered}\n\nFARMER'S ANSWER: {payload.transcript}"
 
     unknown = CommandResponse(intent="unknown", confidence=0.0)
+    # With the safety net on, treat an unreachable model as the affirmative answer for
+    # this screen — the farmer still has the on-screen buttons either way.
+    fallback = CommandResponse(
+        intent=FALLBACK_COMMAND_INTENT[payload.decision],
+        index=0,
+        rating=5,
+        language="hi",
+        confidence=0.5,
+    )
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
-            SARVAM_CHAT_URL,
-            headers={
-                "api-subscription-key": SARVAM_API_KEY,
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": SARVAM_CHAT_MODEL,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content},
-                ],
-                "temperature": 0.1,
-                "response_format": {
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "voice_command",
-                        "schema": command_json_schema(payload.decision),
-                        "strict": True,
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                SARVAM_CHAT_URL,
+                headers={
+                    "api-subscription-key": SARVAM_API_KEY,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": SARVAM_CHAT_MODEL,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_content},
+                    ],
+                    "temperature": 0.1,
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "voice_command",
+                            "schema": command_json_schema(payload.decision),
+                            "strict": True,
+                        },
                     },
                 },
-            },
-        )
+            )
+    except httpx.HTTPError as exc:
+        _fallback_or_raise("command", f"Sarvam chat unreachable: {exc}")
+        return fallback
 
     if response.status_code != 200:
         logger.error("COMMAND chat failed (%s): %s", response.status_code, response.text)
-        raise HTTPException(status_code=502, detail=f"Sarvam chat error: {response.text}")
+        _fallback_or_raise("command", f"Sarvam chat error: {response.text}")
+        return fallback
 
     content = response.json()["choices"][0]["message"]["content"]
     if content is None:
@@ -232,26 +317,32 @@ async def speak(payload: SpeakRequest) -> Response:
 
     target_language = LANGUAGE_TO_SARVAM.get(payload.language, "en-IN")
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
-            SARVAM_TTS_URL,
-            headers={
-                "api-subscription-key": SARVAM_API_KEY,
-                "Content-Type": "application/json",
-            },
-            json={
-                "text": payload.text,
-                "target_language_code": target_language,
-                "speaker": "shubh",
-                "model": SARVAM_TTS_MODEL,
-            },
-        )
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                SARVAM_TTS_URL,
+                headers={
+                    "api-subscription-key": SARVAM_API_KEY,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "text": payload.text,
+                    "target_language_code": target_language,
+                    "speaker": "shubh",
+                    "model": SARVAM_TTS_MODEL,
+                },
+            )
+    except httpx.HTTPError as exc:
+        _fallback_or_raise("tts", f"Sarvam TTS unreachable: {exc}")
+        return Response(content=SILENT_WAV, media_type="audio/wav")
 
     if response.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Sarvam TTS error: {response.text}")
+        _fallback_or_raise("tts", f"Sarvam TTS error: {response.text}")
+        return Response(content=SILENT_WAV, media_type="audio/wav")
 
     audio_b64 = "".join(response.json().get("audios", []))
     if not audio_b64:
-        raise HTTPException(status_code=502, detail="Sarvam TTS returned no audio")
+        _fallback_or_raise("tts", "Sarvam TTS returned no audio")
+        return Response(content=SILENT_WAV, media_type="audio/wav")
 
     return Response(content=base64.b64decode(audio_b64), media_type="audio/wav")

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
+from app.catalog import mandi_price
 from app.matching import build_options
 from app.schemas import (
     CreateMatchRequest,
@@ -17,7 +18,10 @@ router = APIRouter(prefix="/api/orders", tags=["orders"])
 def order_options(draft: VoiceDraft) -> OptionsResponse:
     """Dealers who could supply this input, ranked — the farmer's price-discovery view
     when buying. Shown so the farmer picks who to buy from, rather than being auto-matched."""
-    return OptionsResponse(options=build_options(draft))  # type: ignore[arg-type]
+    return OptionsResponse(
+        options=build_options(draft),  # type: ignore[arg-type]
+        mandi_price=mandi_price(draft.commodity),
+    )
 
 
 @router.post("")
@@ -28,7 +32,7 @@ def create_order(req: CreateMatchRequest) -> MatchCreateResponse:
         chosen = next((o for o in options if o["id"] == req.partner_id), None)
     if chosen is None:
         chosen = options[0]  # no explicit pick -> fall back to the top-ranked dealer
-    return create_record(req.draft, chosen)
+    return create_record(req.draft, chosen, req.user_id)
 
 
 @router.get("/{order_id}")

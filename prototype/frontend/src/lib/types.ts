@@ -29,6 +29,13 @@ export interface PartnerOption {
   tags: PartnerTag[];
 }
 
+// Price discovery for one request: who's competing for it, and what the local mandi
+// pays today — the reference point that makes an offer legible as good or bad.
+export interface OptionsResult {
+  options: PartnerOption[];
+  mandiPrice: number | null;
+}
+
 export interface MatchPartner {
   name: string;
   distanceKm: number;
@@ -54,6 +61,60 @@ export interface CommandResult {
   language: string;
   confidence: number;
 }
+
+// ---- Market dashboard --------------------------------------------------------
+
+export interface MarketRate {
+  commodity: string;
+  nameHi: string;
+  nameBn: string;
+  unit: string;
+  price: number;
+  delta: number;
+  emoji: string;
+}
+
+export interface DemandSummary {
+  commodity: string;
+  nameHi: string;
+  nameBn: string;
+  unit: string;
+  emoji: string;
+  buyers: number;
+  priceMin: number;
+  priceMax: number;
+  mandiPrice: number;
+}
+
+export interface Market {
+  rates: MarketRate[];
+  demand: DemandSummary[];
+}
+
+// ---- Deals (the farmer's standing record) ------------------------------------
+
+export interface Deal {
+  id: string;
+  action: Action;
+  commodity: string;
+  quantity: number;
+  unit: string;
+  price: number;
+  partner: string;
+  status: OrderStep;
+  amount: number;
+  createdAt: number;
+}
+
+export interface DealsData {
+  deals: Deal[];
+  earnedThisMonth: number;
+  dealCount: number;
+}
+
+// Which tab of the app shell is showing. The transaction flow (listening -> review)
+// takes over the whole screen and is not a tab.
+export type Tab = "market" | "deals" | "rates" | "profile";
 
 export interface User {
   id: string;

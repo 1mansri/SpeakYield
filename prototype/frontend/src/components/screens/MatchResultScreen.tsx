@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
-import { ArrowLeft, CheckCircle, IndianRupee, MapPin, Star, Truck, Wheat } from "lucide-react";
+import {
+  ArrowLeft,
+  BadgeCheck,
+  CheckCircle,
+  IndianRupee,
+  MapPin,
+  Smartphone,
+  Star,
+  Truck,
+  Wheat,
+} from "lucide-react";
 import { CommandResult, DeliveryPartner, Draft, Language, PartnerOption } from "@/lib/types";
 import { copy } from "@/lib/copy";
 import { playText } from "@/lib/tts";
@@ -16,6 +26,7 @@ export default function MatchResultScreen({
   delivery,
   onBack,
   onConfirmPayment,
+  onSeeCounterparty,
 }: {
   language: Language;
   draft: Draft;
@@ -23,6 +34,7 @@ export default function MatchResultScreen({
   delivery: DeliveryPartner;
   onBack: () => void;
   onConfirmPayment: () => void;
+  onSeeCounterparty: () => void;
 }) {
   const t = copy[language];
   const unit = draft.unit || "unit";
@@ -56,7 +68,12 @@ export default function MatchResultScreen({
 
       <Card className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-lg font-semibold">{match.name}</p>
+          <p className="flex items-center gap-1.5 text-lg font-semibold">
+            {match.name}
+            {match.reviews >= 100 && (
+              <BadgeCheck size={18} className="text-primary" aria-label={t.verified} />
+            )}
+          </p>
           <span className="flex items-center gap-1 text-base font-semibold text-text-primary">
             <Star size={16} className="fill-accent text-accent" />
             {match.rating.toFixed(1)}
@@ -89,6 +106,16 @@ export default function MatchResultScreen({
           </p>
         </div>
       </Card>
+
+      {/* Demo affordance: show that this deal exists on someone else's phone too. */}
+      <button
+        type="button"
+        onClick={onSeeCounterparty}
+        className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border py-3 text-base font-semibold text-text-secondary hover:border-primary hover:text-primary"
+      >
+        <Smartphone size={18} />
+        {match.role === "buyer" ? t.seeBuyerPhone : t.seeDealerPhone}
+      </button>
 
       <div className="mt-auto flex flex-col gap-4">
         <AnswerMic language={language} decision="pay" onResult={handleAnswer} />

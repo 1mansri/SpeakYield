@@ -70,7 +70,8 @@ COMMAND_INSTRUCTIONS: dict[str, str] = {
     "review": (
         "The farmer is rating the deal 1-5 stars and may add a short remark. Set 'rating' to the "
         "number of stars they said as a digit 1-5 (पाँच = 5, तीन = 3, চার = 4, 'four stars' = 4), "
-        "or 0 if they gave no number. Put any extra remark in 'comment' in the language they spoke. "
+        "or 0 if they gave no number. Put any extra remark in 'comment' in the language "
+        "they spoke. "
         "'submit' if they gave a rating or clearly want to send it. "
         "'skip' = skip / no thanks / later (छोड़ो, रहने दो, বাদ দাও, skip, later). "
         "'unknown' if unclear."

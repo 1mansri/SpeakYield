@@ -11,6 +11,13 @@ dependencies = [
     "python-multipart>=0.0.12",
 ]
 
+[tool.uv]
+# Don't build/install this backend as a package. `uv run` otherwise builds a wheel in an
+# isolated env under uv's cache, and Windows Application Control blocks executing that
+# copied python.exe (os error 4551). Nothing needs the wheel: the app is imported from the
+# working directory both locally and in the container (WORKDIR /app).
+package = false
+
 [dependency-groups]
 dev = [
     "ruff>=0.7",

@@ -127,5 +127,52 @@
     { "name": "Suresh", "vehicle": "bike" },
     { "name": "Bablu", "vehicle": "van" },
     { "name": "Anwar", "vehicle": "bike" }
+  ],
+  "rates": [
+    {
+      "commodity": "Tomato",
+      "name_hi": "टमाटर",
+      "name_bn": "টমেটো",
+      "unit": "kg",
+      "price": 22,
+      "delta": 2,
+      "emoji": "🍅"
+    },
+    {
+      "commodity": "Potato",
+      "name_hi": "आलू",
+      "name_bn": "আলু",
+      "unit": "kg",
+      "price": 18,
+      "delta": -1,
+      "emoji": "🥔"
+    },
+    {
+      "commodity": "Onion",
+      "name_hi": "प्याज़",
+      "name_bn": "পেঁয়াজ",
+      "unit": "kg",
+      "price": 24,
+      "delta": 3,
+      "emoji": "🧅"
+    },
+    {
+      "commodity": "Rice",
+      "name_hi": "चावल",
+      "name_bn": "চাল",
+      "unit": "kg",
+      "price": 21,
+      "delta": 0,
+      "emoji": "🌾"
+    },
+    {
+      "commodity": "Wheat",
+      "name_hi": "गेहूँ",
+      "name_bn": "গম",
+      "unit": "kg",
+      "price": 25,
+      "delta": 1,
+      "emoji": "🌾"
+    }
   ]
 }

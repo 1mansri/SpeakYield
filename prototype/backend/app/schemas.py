@@ -134,6 +134,9 @@ class PartnerOption(BaseModel):
 
 class OptionsResponse(BaseModel):
     options: list[PartnerOption]
+    # Today's local rate for this commodity, when it's on the board — lets the UI show
+    # each offer as a gain or loss against what the farmer would get at the mandi.
+    mandi_price: float | None = None
 
 
 class DeliveryPartnerInfo(BaseModel):
@@ -148,6 +151,7 @@ class CreateMatchRequest(BaseModel):
 
     draft: VoiceDraft
     partner_id: str | None = None
+    user_id: str | None = None  # so the deal lands in this farmer's standing record
 
 
 class MatchCreateResponse(BaseModel):
@@ -165,6 +169,68 @@ class StatusResponse(BaseModel):
     status: OrderStep
     match: PartnerOption
     delivery: DeliveryPartnerInfo
+
+
+# ---- Market surface (dashboard) ----------------------------------------------
+# The market screen is the first thing a farmer (and a demo audience) sees, so it
+# leads with the two things a marketplace has and an assistant does not: today's
+# going rates, and the counterparties currently trading.
+
+
+class MarketRate(BaseModel):
+    """Today's going rate for a commodity in the pilot mandi."""
+
+    commodity: str
+    name_hi: str
+    name_bn: str
+    unit: str
+    price: float
+    delta: float  # change vs. yesterday; drives the ▲/▼ indicator
+    emoji: str
+
+
+class DemandSummary(BaseModel):
+    """How much live demand exists for one commodity right now — buyer count and the
+    spread they're paying. This is the marketplace's core claim, on the home screen."""
+
+    commodity: str
+    name_hi: str
+    name_bn: str
+    unit: str
+    emoji: str
+    buyers: int
+    price_min: float
+    price_max: float
+    mandi_price: float
+
+
+class MarketResponse(BaseModel):
+    rates: list[MarketRate]
+    demand: list[DemandSummary]
+
+
+# ---- Deals (the farmer's standing record) ------------------------------------
+# A marketplace remembers what you traded; a conversation does not. Every confirmed
+# listing/order becomes a deal the farmer can come back to.
+
+
+class DealSummary(BaseModel):
+    id: str
+    action: Literal["sell", "buy"]
+    commodity: str
+    quantity: float
+    unit: str
+    price: float
+    partner: str
+    status: OrderStep
+    amount: float  # net to the farmer for a sell; what they paid for a buy
+    created_at: float
+
+
+class DealsResponse(BaseModel):
+    deals: list[DealSummary]  # newest first
+    earned_this_month: float
+    deal_count: int
 
 
 class ReviewRequest(BaseModel):

@@ -87,8 +87,11 @@ Two terminals, run concurrently.
 **Backend:**
 ```bash
 cd prototype/backend
-uv sync
+uv venv
+.venv\Scripts\activate
+uv pip install -r pyproject.toml
 uv run --env-file .env uvicorn app.main:app --reload --port 8000
+
 ```
 
 **Frontend:**
