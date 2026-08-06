@@ -4,6 +4,7 @@ import { IndianRupee } from "lucide-react";
 import { Deal, Language, OrderStep } from "@/lib/types";
 import { copy } from "@/lib/copy";
 import { commodityEmoji } from "@/lib/commodities";
+import { grouped } from "@/lib/format";
 
 const STATUS_LABELS: Record<Language, Record<OrderStep, string>> = {
   hi: {
@@ -66,22 +67,24 @@ export default function DealCard({ language, deal }: { language: Language; deal:
             {relativeDay(deal.createdAt, language)} · ₹{deal.price}/{deal.unit}
           </span>
         </div>
-        <span
-          className={`flex shrink-0 items-center text-xl font-bold tabular-nums ${
-            selling ? "text-primary" : "text-text-primary"
-          }`}
-        >
-          {selling ? "+" : "−"}
-          <IndianRupee size={16} />
-          {deal.amount}
-        </span>
-      </div>
 
-      {/* Fees are already netted out of `amount`, so say so rather than let the farmer
-          wonder why the total isn't quantity × price. */}
-      <span className="text-sm text-text-secondary">
-        {selling ? t.netAmount : t.paymentDone}
-      </span>
+        <div className="flex shrink-0 flex-col items-end">
+          <span
+            className={`flex items-center text-xl font-bold leading-none tabular-nums ${
+              selling ? "text-primary" : "text-text-primary"
+            }`}
+          >
+            {selling ? "+" : "−"}
+            <IndianRupee size={16} />
+            {grouped(deal.amount)}
+          </span>
+          {/* Fees are already netted out of `amount`, so caption it rather than let the
+              farmer wonder why the total isn't quantity × price. */}
+          <span className="text-sm text-text-secondary">
+            {selling ? t.netAmount : t.paymentDone}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

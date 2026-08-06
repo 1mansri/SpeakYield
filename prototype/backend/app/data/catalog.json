@@ -136,7 +136,11 @@
       "unit": "kg",
       "price": 22,
       "delta": 2,
-      "emoji": "🍅"
+      "emoji": "🍅",
+      "low": 19,
+      "high": 24,
+      "arrivals_qtl": 412,
+      "trend": [19, 18, 20, 21, 19, 20, 22]
     },
     {
       "commodity": "Potato",
@@ -145,7 +149,11 @@
       "unit": "kg",
       "price": 18,
       "delta": -1,
-      "emoji": "🥔"
+      "emoji": "🥔",
+      "low": 17,
+      "high": 20,
+      "arrivals_qtl": 1180,
+      "trend": [21, 20, 20, 19, 19, 19, 18]
     },
     {
       "commodity": "Onion",
@@ -154,7 +162,11 @@
       "unit": "kg",
       "price": 24,
       "delta": 3,
-      "emoji": "🧅"
+      "emoji": "🧅",
+      "low": 21,
+      "high": 26,
+      "arrivals_qtl": 640,
+      "trend": [18, 19, 19, 20, 20, 21, 24]
     },
     {
       "commodity": "Rice",
@@ -163,7 +175,11 @@
       "unit": "kg",
       "price": 21,
       "delta": 0,
-      "emoji": "🌾"
+      "emoji": "🌾",
+      "low": 20,
+      "high": 22,
+      "arrivals_qtl": 2350,
+      "trend": [21, 21, 20, 21, 21, 21, 21]
     },
     {
       "commodity": "Wheat",
@@ -172,7 +188,56 @@
       "unit": "kg",
       "price": 25,
       "delta": 1,
-      "emoji": "🌾"
+      "emoji": "🌾",
+      "low": 23,
+      "high": 26,
+      "arrivals_qtl": 1720,
+      "trend": [23, 23, 24, 24, 24, 24, 25]
+    }
+  ],
+  "mandi": {
+    "name": "Kharagpur Regulated Market",
+    "name_hi": "खड़गपुर कृषि उपज मंडी",
+    "name_bn": "খড়্গপুর কৃষি বাজার",
+    "code": "WB-PGM-KGP-0114",
+    "opens": "06:00",
+    "closes": "18:00"
+  },
+  "ticker": [
+    {
+      "minutes_ago": 6,
+      "kind": "bid",
+      "text": "Kolkata Fresh Mart raised tomato to ₹25",
+      "text_hi": "कोलकाता फ्रेश मार्ट ने टमाटर ₹25 किया",
+      "text_bn": "কলকাতা ফ্রেশ মার্ট টমেটো ₹25 করল"
+    },
+    {
+      "minutes_ago": 18,
+      "kind": "lot",
+      "text": "40 kg tomato sold — Sita Devi to Ramesh Traders",
+      "text_hi": "40 किलो टमाटर बिका — सीता देवी से रमेश ट्रेडर्स",
+      "text_bn": "40 কেজি টমেটো বিক্রি — সীতা দেবী থেকে রমেশ ট্রেডার্স"
+    },
+    {
+      "minutes_ago": 41,
+      "kind": "arrival",
+      "text": "Onion arrivals up 220 qtl since morning",
+      "text_hi": "प्याज़ की आवक सुबह से 220 क्विंटल बढ़ी",
+      "text_bn": "সকাল থেকে পেঁয়াজের আমদানি 220 কুইন্টাল বেড়েছে"
+    },
+    {
+      "minutes_ago": 74,
+      "kind": "settle",
+      "text": "Midnapore Wholesale settled ₹18,400 via UPI",
+      "text_hi": "मिदनापुर होलसेल ने ₹18,400 UPI से चुकाए",
+      "text_bn": "মেদিনীপুর হোলসেল UPI-তে ₹18,400 মিটিয়েছে"
+    },
+    {
+      "minutes_ago": 96,
+      "kind": "bid",
+      "text": "Haldia Mandi Agent opened buying for potato",
+      "text_hi": "हल्दिया मंडी एजेंट ने आलू की खरीद शुरू की",
+      "text_bn": "হলদিয়া মান্ডি এজেন্ট আলু কেনা শুরু করল"
     }
   ]
 }

@@ -178,7 +178,11 @@ class StatusResponse(BaseModel):
 
 
 class MarketRate(BaseModel):
-    """Today's going rate for a commodity in the pilot mandi."""
+    """Today's going rate for a commodity in the pilot mandi.
+
+    Carries the columns a physical mandi board carries — session low/high, arrivals,
+    and the week's closes — because a price with no range and no volume behind it is a
+    number on a screen, not a market quote."""
 
     commodity: str
     name_hi: str
@@ -187,6 +191,10 @@ class MarketRate(BaseModel):
     price: float
     delta: float  # change vs. yesterday; drives the ▲/▼ indicator
     emoji: str
+    low: float  # today's session low
+    high: float  # today's session high
+    arrivals_qtl: float  # quintals arrived at the mandi today
+    trend: list[float]  # last 7 closes, oldest first — drives the sparkline
 
 
 class DemandSummary(BaseModel):
@@ -204,9 +212,38 @@ class DemandSummary(BaseModel):
     mandi_price: float
 
 
+class MandiInfo(BaseModel):
+    """The physical market this board belongs to. A rate is only meaningful attached to
+    a place and a trading session, so the board says which one and when it closes."""
+
+    name: str
+    name_hi: str
+    name_bn: str
+    code: str  # the mandi's regulated-market licence number
+    opens: str  # "HH:MM", IST
+    closes: str  # "HH:MM", IST
+
+
+class TickerItem(BaseModel):
+    """One line of the live market feed — a bid moving, a lot clearing, arrivals
+    landing. Timestamped rather than relative so the client can age it as it sits."""
+
+    kind: Literal["bid", "lot", "arrival", "settle"]
+    text: str
+    text_hi: str
+    text_bn: str
+    at: float  # epoch seconds
+
+
 class MarketResponse(BaseModel):
     rates: list[MarketRate]
     demand: list[DemandSummary]
+    mandi: MandiInfo
+    ticker: list[TickerItem]
+    # When the board was last chalked up, and whether trading is on right now. Both are
+    # what turn a static price list into something the farmer can trust the age of.
+    updated_at: float
+    session: Literal["open", "closed"]
 
 
 # ---- Deals (the farmer's standing record) ------------------------------------

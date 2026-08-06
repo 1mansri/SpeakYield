@@ -5,10 +5,12 @@ import {
   Draft,
   DealsData,
   DeliveryPartner,
+  MandiInfo,
   Market,
   OptionsResult,
   PartnerOption,
   OrderStep,
+  TickerKind,
   User,
 } from "./types";
 
@@ -90,21 +92,53 @@ interface BackendRate {
   price: number;
   delta: number;
   emoji: string;
+  low?: number;
+  high?: number;
+  arrivals_qtl?: number;
+  trend?: number[];
 }
 
-interface BackendDemand extends Omit<BackendRate, "price" | "delta"> {
+interface BackendDemand
+  extends Omit<BackendRate, "price" | "delta" | "low" | "high" | "arrivals_qtl" | "trend"> {
   buyers: number;
   price_min: number;
   price_max: number;
   mandi_price: number;
 }
 
+interface BackendMarket {
+  rates: BackendRate[];
+  demand: BackendDemand[];
+  mandi?: {
+    name: string;
+    name_hi: string;
+    name_bn: string;
+    code: string;
+    opens: string;
+    closes: string;
+  };
+  ticker?: { kind: TickerKind; text: string; text_hi: string; text_bn: string; at: number }[];
+  updated_at?: number;
+  session?: "open" | "closed";
+}
+
+// Board metadata is optional on the wire so an older backend (or a test fixture that
+// only stubs rates and demand) still renders a working board instead of a blank screen.
+const FALLBACK_MANDI: MandiInfo = {
+  name: "Kharagpur Regulated Market",
+  nameHi: "खड़गपुर कृषि उपज मंडी",
+  nameBn: "খড়্গপুর কৃষি বাজার",
+  code: "WB-PGM-KGP-0114",
+  opens: "06:00",
+  closes: "18:00",
+};
+
 // The market dashboard — today's rates plus live demand. One call, because it's the
 // first paint of the app and a second round trip is a visible stall on a slow phone.
 export async function getMarket(): Promise<Market> {
   const res = await fetch(`${API_URL}/api/market`);
   if (!res.ok) throw new ApiError("Could not load the market");
-  const data: { rates: BackendRate[]; demand: BackendDemand[] } = await res.json();
+  const data: BackendMarket = await res.json();
   return {
     rates: data.rates.map((r) => ({
       commodity: r.commodity,
@@ -114,6 +148,10 @@ export async function getMarket(): Promise<Market> {
       price: r.price,
       delta: r.delta,
       emoji: r.emoji,
+      low: r.low ?? r.price,
+      high: r.high ?? r.price,
+      arrivalsQtl: r.arrivals_qtl ?? 0,
+      trend: r.trend ?? [],
     })),
     demand: data.demand.map((d) => ({
       commodity: d.commodity,
@@ -126,6 +164,25 @@ export async function getMarket(): Promise<Market> {
       priceMax: d.price_max,
       mandiPrice: d.mandi_price,
     })),
+    mandi: data.mandi
+      ? {
+          name: data.mandi.name,
+          nameHi: data.mandi.name_hi,
+          nameBn: data.mandi.name_bn,
+          code: data.mandi.code,
+          opens: data.mandi.opens,
+          closes: data.mandi.closes,
+        }
+      : FALLBACK_MANDI,
+    ticker: (data.ticker ?? []).map((i) => ({
+      kind: i.kind,
+      text: i.text,
+      textHi: i.text_hi,
+      textBn: i.text_bn,
+      at: i.at,
+    })),
+    updatedAt: data.updated_at ?? Date.now() / 1000,
+    session: data.session ?? "open",
   };
 }
 

@@ -19,6 +19,17 @@
   /* Status */
   --color-error: #c1442e;
   --color-success: #2f6b3c;
+
+  /* Mandi board — the slate a regulated market actually chalks its rates on. The app's
+     one dark surface: it makes the price board an object on the page rather than
+     another rounded card in a stack of rounded cards. */
+  --color-board: #1c2a22;
+  --color-board-raised: #24352b;
+  --color-board-line: #35493c;
+  --color-board-ink: #f4efe2;
+  --color-board-muted: #9cb3a3;
+  --color-up: #74cc8b;
+  --color-down: #e58a72;
 }
 
 @theme inline {
@@ -33,6 +44,13 @@
   --color-border: var(--color-border);
   --color-error: var(--color-error);
   --color-success: var(--color-success);
+  --color-board: var(--color-board);
+  --color-board-raised: var(--color-board-raised);
+  --color-board-line: var(--color-board-line);
+  --color-board-ink: var(--color-board-ink);
+  --color-board-muted: var(--color-board-muted);
+  --color-up: var(--color-up);
+  --color-down: var(--color-down);
 
   --font-sans: var(--font-noto-sans), var(--font-noto-devanagari), var(--font-noto-bengali),
     system-ui, sans-serif;
@@ -45,6 +63,35 @@ html {
 body {
   background: var(--color-background);
   color: var(--color-text-primary);
+}
+
+/* The live-session indicator: one slow breath, not a blink. A blinking dot reads as a
+   loading state; this reads as a pulse the market has. */
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+.live-dot {
+  animation: live-pulse 2.4s ease-in-out infinite;
+}
+
+/* Horizontal rails (the week's trend, the feed) scroll without a visible bar — on a
+   phone the bar is chrome the farmer never uses. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Respect low-motion preference per DESIGN_TOOLING.md guardrails */

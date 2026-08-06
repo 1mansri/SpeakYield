@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Layout, { FlowFrame } from "@/components/Layout";
 import AppShell from "@/components/AppShell";
 import LoginScreen from "@/components/screens/LoginScreen";
@@ -22,10 +22,15 @@ import { Action, DeliveryPartner, Draft, Language, PartnerOption, Tab, User } fr
 import { createMatch, extractIntent, getOptions, submitReview, transcribe } from "@/lib/api";
 import { normalizeLanguage } from "@/lib/language";
 import { copy } from "@/lib/copy";
+import { clearSession, loadSession, saveSession, updateSession } from "@/lib/session";
+import { useHydrated } from "@/lib/useHydrated";
 
 // "home" is the tabbed app shell; `tab` selects which surface it shows. Everything else
 // is a step of the single-focus transaction flow, which renders outside the shell.
+// "restoring" is the brief moment before we know whether there's a saved session — it
+// exists so a returning farmer never sees the login form flash past them.
 type Screen =
+  | "restoring"
   | "login"
   | "welcome"
   | "home"
@@ -42,11 +47,13 @@ type Screen =
   | "error";
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("login");
+  // `null` means "the farmer hasn't navigated yet", so the landing screen can be derived
+  // from the stored session below instead of being written in by an effect.
+  const [navigatedTo, setScreen] = useState<Screen | null>(null);
   const [previousScreen, setPreviousScreen] = useState<Screen>("home");
   const [tab, setTab] = useState<Tab>("market");
-  const [user, setUser] = useState<User | null>(null);
-  const [language, setLanguage] = useState<Language | null>(null);
+  const [signedInUser, setUser] = useState<User | null>(null);
+  const [chosenLanguage, setLanguage] = useState<Language | null>(null);
   const [mode, setMode] = useState<Action>("sell");
 
   const [transcript, setTranscript] = useState("");
@@ -63,13 +70,47 @@ export default function App() {
   // deals tab both re-read the farmer's record instead of showing a stale one.
   const [dealsVersion, setDealsVersion] = useState(0);
 
+  // The stored session, read straight during render once the browser is available.
+  // `sessionEpoch` is bumped on login and logout so this re-reads storage at exactly the
+  // two moments it changes — everywhere else it's a stable, effect-free read.
+  const hydrated = useHydrated();
+  const [sessionEpoch, setSessionEpoch] = useState(0);
+  const restored = useMemo(() => {
+    void sessionEpoch;
+    return hydrated ? loadSession() : null;
+  }, [hydrated, sessionEpoch]);
+
+  // Session first, then whatever the farmer has done since. Deriving these rather than
+  // copying the session into state on mount is what keeps a reload landing straight on
+  // the market instead of flashing the login form on the way there.
+  const user = signedInUser ?? restored?.user ?? null;
+  const language = chosenLanguage ?? restored?.language ?? null;
+  const screen: Screen =
+    navigatedTo ?? (!hydrated ? "restoring" : restored ? "home" : "login");
+
   const activeLanguage = language ?? "hi";
   const t = copy[activeLanguage];
 
-  function handleLoggedIn(_token: string, loggedInUser: User) {
+  function handleLoggedIn(token: string, loggedInUser: User) {
+    saveSession({ token, user: loggedInUser, language: loggedInUser.language });
+    setSessionEpoch((e) => e + 1);
     setUser(loggedInUser);
     setLanguage(loggedInUser.language);
     setScreen("welcome");
+  }
+
+  function handleLanguageChosen(chosen: Language) {
+    setLanguage(chosen);
+    updateSession({ language: chosen });
+  }
+
+  function handleLogout() {
+    clearSession();
+    setSessionEpoch((e) => e + 1);
+    setUser(null);
+    setLanguage(null);
+    setTab("market");
+    setScreen("login");
   }
 
   function goToError(message: string, backTo: Screen) {
@@ -175,7 +216,7 @@ export default function App() {
           location={user?.location ?? "Kharagpur"}
           tab={tab}
           onTabChange={setTab}
-          onLanguageSwitch={() => setScreen("welcome")}
+          onMicPress={() => setScreen("listening")}
         >
           {tab === "market" && (
             <MarketScreen
@@ -185,8 +226,8 @@ export default function App() {
               refreshKey={dealsVersion}
               mode={mode}
               onModeChange={setMode}
-              onMicPress={() => setScreen("listening")}
               onSellCommodity={handleSellCommodity}
+              onOpenDeals={() => setTab("deals")}
             />
           )}
           {tab === "deals" && (
@@ -202,17 +243,20 @@ export default function App() {
               language={activeLanguage}
               user={user}
               onLanguageSwitch={() => setScreen("welcome")}
+              onLogout={handleLogout}
             />
           )}
         </AppShell>
       ) : (
         <FlowFrame>
+          {screen === "restoring" && <SplashScreen />}
+
           {screen === "login" && <LoginScreen onLoggedIn={handleLoggedIn} />}
 
           {screen === "welcome" && (
             <WelcomeScreen
               selected={language}
-              onSelect={setLanguage}
+              onSelect={handleLanguageChosen}
               onContinue={() => setScreen("home")}
             />
           )}
@@ -309,5 +353,18 @@ export default function App() {
         </FlowFrame>
       )}
     </Layout>
+  );
+}
+
+/** Held for the one tick it takes to read the stored session. Deliberately just the
+ *  wordmark — anything with a spinner would advertise a wait that isn't happening. */
+function SplashScreen() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-2">
+      <span className="text-4xl" aria-hidden>
+        🌾
+      </span>
+      <span className="text-xl font-bold text-primary">Speak Yield</span>
+    </div>
   );
 }

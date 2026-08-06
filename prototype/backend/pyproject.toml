@@ -9,6 +9,9 @@ dependencies = [
     "pydantic>=2.9",
     "httpx>=0.27",
     "python-multipart>=0.0.12",
+    # app/config.py loads .env directly, so this is a first-class dependency rather than
+    # something we inherit by luck from uvicorn[standard].
+    "python-dotenv>=1.0",
 ]
 
 [tool.uv]

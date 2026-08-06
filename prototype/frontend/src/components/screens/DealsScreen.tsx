@@ -5,6 +5,7 @@ import { IndianRupee } from "lucide-react";
 import { DealsData, Language } from "@/lib/types";
 import { copy, fill } from "@/lib/copy";
 import { getDeals } from "@/lib/api";
+import { grouped } from "@/lib/format";
 import DealCard from "@/components/DealCard";
 
 /**
@@ -43,14 +44,18 @@ export default function DealsScreen({
   const past = data?.deals.filter((d) => d.status === "delivered") ?? [];
 
   return (
-    <div className="flex flex-1 flex-col gap-5 py-4">
-      <div className="flex flex-col gap-1 rounded-2xl bg-primary p-4 text-white">
-        <span className="text-base opacity-90">{t.earnedThisMonth}</span>
-        <span className="flex items-center text-3xl font-bold tabular-nums">
-          <IndianRupee size={24} />
-          {data?.earnedThisMonth ?? 0}
-        </span>
-        <span className="text-base opacity-90">
+    <div className="flex flex-col gap-5 pt-3">
+      {/* A statement header, not a hero card: the number is the point, and the label
+          under it says what period it covers — the way a passbook line reads. */}
+      <div className="flex items-end justify-between gap-3 border-b-2 border-primary/20 pb-3">
+        <div className="flex flex-col">
+          <span className="flex items-center text-3xl font-bold leading-none tabular-nums text-primary">
+            <IndianRupee size={24} strokeWidth={2.5} />
+            {grouped(data?.earnedThisMonth ?? 0)}
+          </span>
+          <span className="mt-1 text-base text-text-secondary">{t.earnedThisMonth}</span>
+        </div>
+        <span className="text-base tabular-nums text-text-secondary">
           {fill(t.dealsCount, { n: data?.dealCount ?? 0 })}
         </span>
       </div>
@@ -81,7 +86,10 @@ export default function DealsScreen({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-base font-bold uppercase tracking-wide text-text-secondary">{title}</h2>
+      <div className="flex items-center gap-3">
+        <h2 className="shrink-0 text-base font-semibold text-text-primary">{title}</h2>
+        <span className="h-px flex-1 bg-border" />
+      </div>
       <div className="flex flex-col gap-3">{children}</div>
     </section>
   );

@@ -72,6 +72,13 @@ export interface MarketRate {
   price: number;
   delta: number;
   emoji: string;
+  /** Today's session low and high — the range the price actually traded in. */
+  low: number;
+  high: number;
+  /** Quintals arrived at the mandi today; volume is what makes a rate credible. */
+  arrivalsQtl: number;
+  /** Last 7 closes, oldest first — drives the sparkline. */
+  trend: number[];
 }
 
 export interface DemandSummary {
@@ -86,9 +93,37 @@ export interface DemandSummary {
   mandiPrice: number;
 }
 
+/** The physical market the board belongs to, and the hours it trades. */
+export interface MandiInfo {
+  name: string;
+  nameHi: string;
+  nameBn: string;
+  /** Regulated-market licence number, printed small on the board like the real thing. */
+  code: string;
+  opens: string;
+  closes: string;
+}
+
+export type TickerKind = "bid" | "lot" | "arrival" | "settle";
+
+/** One line of the live market feed: a bid moving, a lot clearing, arrivals landing. */
+export interface TickerItem {
+  kind: TickerKind;
+  text: string;
+  textHi: string;
+  textBn: string;
+  /** Epoch seconds, so the client can age the line as it sits on screen. */
+  at: number;
+}
+
 export interface Market {
   rates: MarketRate[];
   demand: DemandSummary[];
+  mandi: MandiInfo;
+  ticker: TickerItem[];
+  /** When the board was last chalked up (epoch seconds). */
+  updatedAt: number;
+  session: "open" | "closed";
 }
 
 // ---- Deals (the farmer's standing record) ------------------------------------
