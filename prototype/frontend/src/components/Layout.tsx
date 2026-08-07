@@ -16,7 +16,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 }
 
 /** Gutter for the single-focus transaction screens, which render outside the app shell.
- *  They scroll on their own since there is no shell around them to do it. */
+ *  They scroll on their own since there is no shell around them to do it. The bar itself
+ *  is hidden: the frame is 480px wide and centred, so on a desktop its scrollbar lands in
+ *  the middle of the screen — a stray strip of chrome cutting the phone in half. */
 export function FlowFrame({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-1 flex-col overflow-y-auto px-5 py-6">{children}</div>;
+  return (
+    <div className="no-scrollbar flex flex-1 flex-col overflow-y-auto px-5 py-6">{children}</div>
+  );
 }

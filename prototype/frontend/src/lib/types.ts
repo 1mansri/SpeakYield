@@ -93,6 +93,27 @@ export interface DemandSummary {
   mandiPrice: number;
 }
 
+/**
+ * The buy side's mirror of DemandSummary: who stocks one farm input, at what band, and
+ * how far the nearest one is.
+ *
+ * There is no board rate for urea the way there is for tomato, so this carries
+ * `nearestKm`/`nearestPrice` where DemandSummary carries `mandiPrice` — buying, the
+ * question is "cheapest nearby, and how far", not "how far above the mandi".
+ */
+export interface SupplySummary {
+  commodity: string;
+  nameHi: string;
+  nameBn: string;
+  unit: string;
+  emoji: string;
+  dealers: number;
+  priceMin: number;
+  priceMax: number;
+  nearestKm: number;
+  nearestPrice: number;
+}
+
 /** The physical market the board belongs to, and the hours it trades. */
 export interface MandiInfo {
   name: string;
@@ -118,7 +139,9 @@ export interface TickerItem {
 
 export interface Market {
   rates: MarketRate[];
+  /** Both directions, fetched together so the home screen's Sell/Buy switch is instant. */
   demand: DemandSummary[];
+  supply: SupplySummary[];
   mandi: MandiInfo;
   ticker: TickerItem[];
   /** When the board was last chalked up (epoch seconds). */
@@ -143,8 +166,12 @@ export interface Deal {
 
 export interface DealsData {
   deals: Deal[];
+  /** Settled this month in each direction — money in from crop, money out for inputs. */
   earnedThisMonth: number;
+  spentThisMonth: number;
   dealCount: number;
+  sellCount: number;
+  buyCount: number;
 }
 
 // Which tab of the app shell is showing. The transaction flow (listening -> review)

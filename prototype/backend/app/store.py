@@ -143,8 +143,13 @@ def _to_deal(record_id: str, record: dict[str, Any]) -> DealSummary:
 
 def list_deals(user_id: str | None) -> DealsResponse:
     """Every deal this farmer has going or completed, newest first, plus what they've
-    earned this month. This is the app's memory — the thing that makes it a place the
-    farmer has a history in, rather than a session that resets."""
+    earned and spent this month. This is the app's memory — the thing that makes it a
+    place the farmer has a history in, rather than a session that resets.
+
+    Both totals are reported because the farmer trades in both directions: money in from
+    selling crop, money out for inputs. The home screen shows whichever matches the
+    direction they're looking at, so a buy-mode dashboard never labels spending "earned".
+    """
     cutoff = time.time() - 30 * DAY_SECONDS
     deals = [
         _to_deal(rid, rec)
@@ -153,12 +158,21 @@ def list_deals(user_id: str | None) -> DealsResponse:
     ]
     deals.sort(key=lambda d: d.created_at, reverse=True)
 
-    earned = sum(
-        d.amount
-        for d in deals
-        if d.action == "sell" and d.status == "delivered" and d.created_at >= cutoff
+    def _settled_total(action: str) -> float:
+        return sum(
+            d.amount
+            for d in deals
+            if d.action == action and d.status == "delivered" and d.created_at >= cutoff
+        )
+
+    return DealsResponse(
+        deals=deals,
+        earned_this_month=_settled_total("sell"),
+        spent_this_month=_settled_total("buy"),
+        deal_count=len(deals),
+        sell_count=sum(1 for d in deals if d.action == "sell"),
+        buy_count=sum(1 for d in deals if d.action == "buy"),
     )
-    return DealsResponse(deals=deals, earned_this_month=earned, deal_count=len(deals))
 
 
 # ---- Demo seed ---------------------------------------------------------------

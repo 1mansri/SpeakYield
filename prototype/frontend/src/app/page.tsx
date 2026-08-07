@@ -136,11 +136,13 @@ export default function App() {
     setScreen("home");
   }
 
-  // Browsing into the flow: tapping a demand card on the dashboard starts a sell for that
-  // commodity. Entering the market by seeing an opportunity — not only by speaking into an
-  // empty screen — is what separates a marketplace from an assistant.
-  function handleSellCommodity(commodityLabel: string) {
-    setMode("sell");
+  // Browsing into the flow: tapping a demand card starts a sell for that commodity, and
+  // tapping a supply card starts a buy for that input. Entering the market by seeing an
+  // opportunity — not only by speaking into an empty screen — is what separates a
+  // marketplace from an assistant, and it has to work in both directions or the buy side
+  // is a mode with no way in except the mic.
+  function handleStartFlow(commodityLabel: string, action: Action) {
+    setMode(action);
     setPendingCommodity(commodityLabel);
     setScreen("listening");
   }
@@ -157,7 +159,11 @@ export default function App() {
       setLanguage(normalized);
 
       const extracted = await extractIntent(rawTranscript, normalized);
-      setDraft(extracted);
+      // Farmers rarely name their own village out loud — the extractor correctly returns
+      // an empty location rather than inventing one, but the slip then reads "Place: not
+      // set" for somewhere we already know. Fall back to the registered location; anything
+      // actually spoken still wins, and the backend scores a location match either way.
+      setDraft({ ...extracted, location: extracted.location || user?.location || "" });
       setMode(extracted.action); // speech-detected intent wins; the Home chip was only a hint
       setScreen("confirm");
     } catch {
@@ -226,7 +232,7 @@ export default function App() {
               refreshKey={dealsVersion}
               mode={mode}
               onModeChange={setMode}
-              onSellCommodity={handleSellCommodity}
+              onStartFlow={handleStartFlow}
               onOpenDeals={() => setTab("deals")}
             />
           )}
@@ -264,6 +270,7 @@ export default function App() {
           {screen === "listening" && (
             <ListeningScreen
               language={activeLanguage}
+              action={mode}
               hint={pendingCommodity ?? undefined}
               onCancel={() => {
                 setPendingCommodity(null);

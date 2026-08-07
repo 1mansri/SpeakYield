@@ -157,10 +157,16 @@ test("farmer can log in, speak a sell request, and reach the order screen", asyn
   await expect(page.getByText("अभी कौन खरीद रहा है")).toBeVisible();
   await page.getByLabel("बोलने के लिए दबाएँ").click();
 
-  // Confirm Draft: the request as an order slip, not a quoted reply.
+  // Confirm Draft: the request as an order slip, not a quoted reply. The goods are named
+  // in the farmer's language — the extractor's canonical "Tomato" is for matching, not
+  // for reading — and the same words are what the read-back speaks aloud.
   await expect(page.getByText("बिक्री पर्ची")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("Tomato")).toBeVisible();
-  await expect(page.getByText("Kharagpur")).toBeVisible();
+  // Scoped to the slip's own rows: the transcript line above it quotes the same words,
+  // and asserting page-wide would pass on the quote alone without the slip being filled.
+  const slip = page.locator("dl");
+  await expect(slip.getByText("टमाटर")).toBeVisible();
+  await expect(slip.getByText("50 किलो")).toBeVisible();
+  await expect(slip.getByText("Kharagpur")).toBeVisible();
   await expect(page.getByText("अभी पक्का नहीं हुआ")).toBeVisible();
 
   // Confirm -> Options (price-discovery list of buyers to choose from)

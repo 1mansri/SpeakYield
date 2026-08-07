@@ -85,8 +85,15 @@ export default function OptionsScreen({
         <p className="mt-1 text-base font-semibold text-text-primary">
           {fill(draft.action === "sell" ? t.biddingSell : t.biddingBuy, { n: options.length })}
         </p>
+        {/* "You didn't say a price" was printed unconditionally — telling a farmer who
+            had just said ₹20 that they hadn't, and contradicting the slip they confirmed
+            one screen earlier. State back whichever is actually true. */}
         <p className="mt-0.5 text-base text-text-secondary">
-          {draft.action === "sell" ? t.priceHintSell : t.priceHintBuy}
+          {draft.price > 0
+            ? fill(draft.action === "sell" ? t.yourPriceSell : t.yourPriceBuy, { p: draft.price })
+            : draft.action === "sell"
+              ? t.priceHintSell
+              : t.priceHintBuy}
         </p>
       </div>
 

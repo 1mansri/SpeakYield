@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle, FileText, IndianRupee, ShieldCheck } from "lucide-react";
-import { CommandResult, Draft, Language, OrderStep } from "@/lib/types";
+import { Action, CommandResult, Draft, Language, OrderStep } from "@/lib/types";
 import { copy } from "@/lib/copy";
 import { commodityEmoji } from "@/lib/commodities";
 import { MOCK_FEES, ORDER_STEPS } from "@/lib/mockData";
@@ -62,7 +62,15 @@ export default function OrderStatusScreen({
 
   const currentStepIndex = ORDER_STEPS.findIndex((s) => s.key === status);
   const gross = draft.quantity * draft.price;
-  const net = gross - MOCK_FEES.platformFee - MOCK_FEES.deliveryFee;
+  // Mirrors the backend's `_deal_amount`, which is what the deals tab shows. Two things
+  // this receipt used to get wrong: on a *buy* the fees are paid by the farmer, so they
+  // add rather than subtract; and on a small sell the flat fees can exceed the gross, so
+  // the total is floored — a receipt reading "net −₹13" says the farmer owes money for
+  // selling their crop.
+  const selling = draft.action === "sell";
+  const net = selling
+    ? Math.max(0, gross - MOCK_FEES.platformFee - MOCK_FEES.deliveryFee)
+    : gross + MOCK_FEES.platformFee + MOCK_FEES.deliveryFee;
 
   return (
     <div className="flex flex-1 flex-col gap-6 py-4">
@@ -90,16 +98,22 @@ export default function OrderStatusScreen({
             {gross}
           </span>
         </div>
+        {/* Signs follow the direction of the trade, so the arithmetic on screen actually
+            adds up to the total below it. */}
         <div className="flex items-center justify-between text-text-secondary">
           <span>{t.platformFee}</span>
-          <span>- ₹{MOCK_FEES.platformFee}</span>
+          <span>
+            {selling ? "−" : "+"} ₹{MOCK_FEES.platformFee}
+          </span>
         </div>
         <div className="flex items-center justify-between text-text-secondary">
           <span>{t.deliveryFee}</span>
-          <span>- ₹{MOCK_FEES.deliveryFee}</span>
+          <span>
+            {selling ? "−" : "+"} ₹{MOCK_FEES.deliveryFee}
+          </span>
         </div>
         <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-lg font-bold text-primary">
-          <span>{t.netAmount}</span>
+          <span>{selling ? t.netAmount : t.totalValue}</span>
           <span className="flex items-center tabular-nums">
             <IndianRupee size={18} />
             {net}
@@ -123,7 +137,7 @@ export default function OrderStatusScreen({
         {ORDER_STEPS.map((step, i) => (
           <StatusRow
             key={step.key}
-            label={statusLabel(step.key, language)}
+            label={statusLabel(step.key, language, draft.action)}
             active={i <= currentStepIndex}
             current={i === currentStepIndex}
             last={i === ORDER_STEPS.length - 1}
@@ -141,28 +155,60 @@ export default function OrderStatusScreen({
   );
 }
 
-function statusLabel(step: OrderStep, language: Language) {
-  const labels: Record<Language, Record<OrderStep, string>> = {
+/**
+ * The fulfilment rail reads in the direction the goods actually move.
+ *
+ * Selling, the crop leaves the farm: it is picked *up* from them and delivered onward.
+ * Buying, the goods come the other way: the dealer dispatches and it arrives at the
+ * farm. The two middle steps are the same backend states — only the farmer's vantage
+ * point differs, and a buy that says "picked up" is narrating someone else's day.
+ */
+function statusLabel(step: OrderStep, language: Language, action: Action) {
+  const labels: Record<Language, Record<Action, Record<OrderStep, string>>> = {
     hi: {
-      confirmed: "पुष्टि हुई",
-      matched: "मिल गया",
-      "picked-up": "उठाया गया",
-      delivered: "पहुँचाया गया",
+      sell: {
+        confirmed: "पुष्टि हुई",
+        matched: "खरीदार मिल गया",
+        "picked-up": "खेत से उठाया गया",
+        delivered: "पहुँचा दिया गया",
+      },
+      buy: {
+        confirmed: "पुष्टि हुई",
+        matched: "दुकान मिल गई",
+        "picked-up": "दुकान से रवाना",
+        delivered: "आपके पास पहुँचा",
+      },
     },
     bn: {
-      confirmed: "নিশ্চিত হয়েছে",
-      matched: "মিলে গেছে",
-      "picked-up": "সংগ্রহ হয়েছে",
-      delivered: "পৌঁছে গেছে",
+      sell: {
+        confirmed: "নিশ্চিত হয়েছে",
+        matched: "ক্রেতা মিলে গেছে",
+        "picked-up": "খেত থেকে সংগ্রহ হয়েছে",
+        delivered: "পৌঁছে দেওয়া হয়েছে",
+      },
+      buy: {
+        confirmed: "নিশ্চিত হয়েছে",
+        matched: "দোকান মিলে গেছে",
+        "picked-up": "দোকান থেকে রওনা",
+        delivered: "আপনার কাছে পৌঁছেছে",
+      },
     },
     en: {
-      confirmed: "Confirmed",
-      matched: "Matched",
-      "picked-up": "Picked up",
-      delivered: "Delivered",
+      sell: {
+        confirmed: "Confirmed",
+        matched: "Buyer matched",
+        "picked-up": "Picked up from the farm",
+        delivered: "Delivered",
+      },
+      buy: {
+        confirmed: "Confirmed",
+        matched: "Dealer matched",
+        "picked-up": "Dispatched from the shop",
+        delivered: "Arrived at your farm",
+      },
     },
   };
-  return labels[language][step];
+  return labels[language][action][step];
 }
 
 /** One step of the fulfilment rail. The connecting line makes the sequence read as

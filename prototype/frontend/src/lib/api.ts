@@ -106,9 +106,19 @@ interface BackendDemand
   mandi_price: number;
 }
 
+interface BackendSupply
+  extends Omit<BackendRate, "price" | "delta" | "low" | "high" | "arrivals_qtl" | "trend"> {
+  dealers: number;
+  price_min: number;
+  price_max: number;
+  nearest_km: number;
+  nearest_price: number;
+}
+
 interface BackendMarket {
   rates: BackendRate[];
   demand: BackendDemand[];
+  supply?: BackendSupply[];
   mandi?: {
     name: string;
     name_hi: string;
@@ -164,6 +174,20 @@ export async function getMarket(): Promise<Market> {
       priceMax: d.price_max,
       mandiPrice: d.mandi_price,
     })),
+    // Optional on the wire, like the board metadata above: an older backend or a test
+    // fixture that only stubs demand still renders a working sell-side dashboard.
+    supply: (data.supply ?? []).map((s) => ({
+      commodity: s.commodity,
+      nameHi: s.name_hi,
+      nameBn: s.name_bn,
+      unit: s.unit,
+      emoji: s.emoji,
+      dealers: s.dealers,
+      priceMin: s.price_min,
+      priceMax: s.price_max,
+      nearestKm: s.nearest_km,
+      nearestPrice: s.nearest_price,
+    })),
     mandi: data.mandi
       ? {
           name: data.mandi.name,
@@ -208,7 +232,10 @@ export async function getDeals(userId?: string): Promise<DealsData> {
   const data: {
     deals: BackendDeal[];
     earned_this_month: number;
+    spent_this_month?: number;
     deal_count: number;
+    sell_count?: number;
+    buy_count?: number;
   } = await res.json();
   return {
     deals: data.deals.map((d) => ({
@@ -224,7 +251,12 @@ export async function getDeals(userId?: string): Promise<DealsData> {
       createdAt: d.created_at,
     })),
     earnedThisMonth: data.earned_this_month,
+    spentThisMonth: data.spent_this_month ?? 0,
     dealCount: data.deal_count,
+    // Counted client-side when the backend predates these fields, so the direction
+    // chips on the deals tab are never wrong even against an older API.
+    sellCount: data.sell_count ?? data.deals.filter((d) => d.action === "sell").length,
+    buyCount: data.buy_count ?? data.deals.filter((d) => d.action === "buy").length,
   };
 }
 

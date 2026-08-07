@@ -7,9 +7,12 @@ export const MOCK_FEES = {
   deliveryFee: 15,
 };
 
-export const ORDER_STEPS: { key: OrderStep; label: string }[] = [
-  { key: "confirmed", label: "Confirmed" },
-  { key: "matched", label: "Matched" },
-  { key: "picked-up", label: "Picked up" },
-  { key: "delivered", label: "Delivered" },
+// The fulfilment rail's order. Keys only — the wording is direction- and
+// language-dependent (`statusLabel` in OrderStatusScreen), and an English label here
+// would be a second source of truth that only ever drifts from it.
+export const ORDER_STEPS: { key: OrderStep }[] = [
+  { key: "confirmed" },
+  { key: "matched" },
+  { key: "picked-up" },
+  { key: "delivered" },
 ];

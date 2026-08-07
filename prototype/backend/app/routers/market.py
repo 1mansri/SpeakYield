@@ -8,6 +8,7 @@ from app.schemas import (
     MandiInfo,
     MarketRate,
     MarketResponse,
+    SupplySummary,
     TickerItem,
 )
 
@@ -16,6 +17,10 @@ router = APIRouter(prefix="/api/market", tags=["market"])
 # Only surface commodities that at least this many buyers are actually taking — a
 # "demand" card for a commodity nobody is buying would be a lie about liquidity.
 MIN_BUYERS_FOR_DEMAND = 1
+
+# Same rule on the buy side: an input card for something no dealer stocks would promise
+# supply that isn't there.
+MIN_DEALERS_FOR_SUPPLY = 1
 
 # The pilot mandi runs on IST no matter where this process happens to be hosted.
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -52,6 +57,33 @@ def _demand_for(rate: dict) -> DemandSummary | None:
         price_min=min(prices),
         price_max=max(prices),
         mandi_price=float(rate["price"]),
+    )
+
+
+def _supply_for(item: dict) -> SupplySummary | None:
+    """Live supply for one farm input, derived from the dealers currently stocking it.
+    Returns None when nobody stocks it, so the buy dashboard never shows empty shelves."""
+    dealers = [
+        d
+        for d in CATALOG["dealers"]
+        if any(_commodity_matches(item["name"], stocked) for stocked in d["inputs"])
+    ]
+    if len(dealers) < MIN_DEALERS_FOR_SUPPLY:
+        return None
+
+    prices = [float(d["price"]) for d in dealers]
+    nearest = min(dealers, key=lambda d: float(d["distance_km"]))
+    return SupplySummary(
+        commodity=item["name"],
+        name_hi=item["name_hi"],
+        name_bn=item["name_bn"],
+        unit=item["unit"],
+        emoji=item["emoji"],
+        dealers=len(dealers),
+        price_min=min(prices),
+        price_max=max(prices),
+        nearest_km=float(nearest["distance_km"]),
+        nearest_price=float(nearest["price"]),
     )
 
 
@@ -109,9 +141,14 @@ def get_market() -> MarketResponse:
     # Most competitive commodities first — the strongest liquidity signal leads.
     demand.sort(key=lambda d: (d.buyers, d.price_max), reverse=True)
 
+    supply = [s for s in (_supply_for(item) for item in CATALOG.get("inputs", [])) if s is not None]
+    # Widest choice first, then cheapest — the buyer's version of "most competitive".
+    supply.sort(key=lambda s: (s.dealers, -s.price_min), reverse=True)
+
     return MarketResponse(
         rates=rates,
         demand=demand,
+        supply=supply,
         mandi=MandiInfo(**mandi),
         ticker=_ticker(now),
         updated_at=updated_at.timestamp(),

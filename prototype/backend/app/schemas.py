@@ -212,6 +212,33 @@ class DemandSummary(BaseModel):
     mandi_price: float
 
 
+class SupplySummary(BaseModel):
+    """The buy side's mirror of DemandSummary: how many dealers stock one farm input
+    right now, the band they're charging, and how close the nearest one is.
+
+    A farmer buying has a different question than a farmer selling. Selling, they want
+    the *highest* bid, and the mandi rate is the reference that says whether a bid is
+    generous. Buying, there is no board rate for urea — so the honest reference is the
+    cheapest price nearby and how far they'd have to travel for it. That's why this
+    carries `nearest_km`/`nearest_price` where DemandSummary carries `mandi_price`.
+
+    Prices come off the dealer's single catalog `price`, which the options screen and
+    `matching.build_options` already treat as their price for whatever is being bought —
+    same simplification, kept consistent rather than invented per input.
+    """
+
+    commodity: str
+    name_hi: str
+    name_bn: str
+    unit: str
+    emoji: str
+    dealers: int
+    price_min: float
+    price_max: float
+    nearest_km: float
+    nearest_price: float
+
+
 class MandiInfo(BaseModel):
     """The physical market this board belongs to. A rate is only meaningful attached to
     a place and a trading session, so the board says which one and when it closes."""
@@ -237,7 +264,11 @@ class TickerItem(BaseModel):
 
 class MarketResponse(BaseModel):
     rates: list[MarketRate]
+    # Both directions of the market, served together: the home screen's Sell/Buy switch
+    # flips between them without a second round trip, so the direction change feels like
+    # turning to face the other side of the mandi rather than loading a new page.
     demand: list[DemandSummary]
+    supply: list[SupplySummary] = []
     mandi: MandiInfo
     ticker: list[TickerItem]
     # When the board was last chalked up, and whether trading is on right now. Both are
@@ -266,8 +297,14 @@ class DealSummary(BaseModel):
 
 class DealsResponse(BaseModel):
     deals: list[DealSummary]  # newest first
+    # Both directions of the ledger. A farmer who only ever sees "earned" has half a
+    # book — what they spend on inputs is the other half, and the home screen shows
+    # whichever one matches the direction they're currently trading in.
     earned_this_month: float
+    spent_this_month: float = 0.0
     deal_count: int
+    sell_count: int = 0
+    buy_count: int = 0
 
 
 class ReviewRequest(BaseModel):

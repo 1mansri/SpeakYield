@@ -138,6 +138,24 @@ export const copy: Record<Language, Record<string, string>> = {
     intentLabel: "मुझे करना है",
     profilePayment: "भुगतान",
     paymentUpi: "UPI · तुरंत",
+    ratePerUnit: "₹{price} प्रति {unit}",
+    yourPriceSell: "आपका भाव ₹{p} — ये खरीदार इस भाव पर ले रहे हैं",
+    yourPriceBuy: "आपका भाव ₹{p} — ये दुकानें इस भाव पर दे रही हैं",
+    // --- Buy side of the market ---
+    // The dashboard turns to face the other direction: the same mandi, but now the
+    // farmer is the one holding money. Nothing here calls them a customer — they are
+    // still the farmer, buying what the next crop needs.
+    liveSupply: "पास में कौन दे रहा है",
+    dealersStocking: "{n} दुकानें",
+    buyThis: "यह खरीदें",
+    nearestDealer: "सबसे पास {d} किमी",
+    lowestPrice: "सबसे सस्ता ₹{p}",
+    noSupply: "पास में अभी कोई दुकान नहीं मिली",
+    spentThisMonth: "इस महीने खर्च",
+    ordersCount: "{n} खरीद",
+    filterAll: "सब",
+    exampleSell: "जैसे — “पचास किलो टमाटर बेचना है”",
+    exampleBuy: "जैसे — “दो बोरी यूरिया चाहिए”",
   },
   bn: {
     appName: "Speak Yield",
@@ -273,6 +291,21 @@ export const copy: Record<Language, Record<string, string>> = {
     intentLabel: "আমি করতে চাই",
     profilePayment: "পেমেন্ট",
     paymentUpi: "UPI · তৎক্ষণাৎ",
+    ratePerUnit: "₹{price} প্রতি {unit}",
+    yourPriceSell: "আপনার দর ₹{p} — এই ক্রেতারা এই দরে নিচ্ছে",
+    yourPriceBuy: "আপনার দর ₹{p} — এই দোকানগুলো এই দরে দিচ্ছে",
+    // --- Buy side of the market ---
+    liveSupply: "কাছে কারা দিচ্ছে",
+    dealersStocking: "{n} টি দোকান",
+    buyThis: "এটা কিনুন",
+    nearestDealer: "সবচেয়ে কাছে {d} কিমি",
+    lowestPrice: "সবচেয়ে সস্তা ₹{p}",
+    noSupply: "কাছে এখন কোনও দোকান পাওয়া যায়নি",
+    spentThisMonth: "এই মাসে খরচ",
+    ordersCount: "{n} কেনা",
+    filterAll: "সব",
+    exampleSell: "যেমন — “পঞ্চাশ কেজি টমেটো বিক্রি করব”",
+    exampleBuy: "যেমন — “দুই বস্তা ইউরিয়া লাগবে”",
   },
   en: {
     appName: "Speak Yield",
@@ -408,6 +441,22 @@ export const copy: Record<Language, Record<string, string>> = {
     intentLabel: "I want to",
     profilePayment: "Payment",
     paymentUpi: "UPI · instant",
+    ratePerUnit: "₹{price} per {unit}",
+    yourPriceSell: "Your price ₹{p} — here's who's buying, and at what",
+    yourPriceBuy: "Your price ₹{p} — here's who's selling, and at what",
+    // --- Buy side of the market ---
+    liveSupply: "Who's selling near you",
+    // Kept short: the input name shares this row and "Urea fertiliser" is already long.
+    dealersStocking: "{n} dealers",
+    buyThis: "Buy this",
+    nearestDealer: "nearest {d} km",
+    lowestPrice: "lowest ₹{p}",
+    noSupply: "No dealers listed near you right now",
+    spentThisMonth: "Spent this month",
+    ordersCount: "{n} purchases",
+    filterAll: "All",
+    exampleSell: "Like — “sell fifty kilos of tomato”",
+    exampleBuy: "Like — “I need two bags of urea”",
   },
 };
 

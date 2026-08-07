@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { RotateCcw, ShoppingBag, Wheat } from "lucide-react";
-import { Action, DealsData, DemandSummary, Language, Market } from "@/lib/types";
+import { Action, DealsData, DemandSummary, Language, Market, SupplySummary } from "@/lib/types";
 import { copy, fill } from "@/lib/copy";
 import { getDeals, getMarket } from "@/lib/api";
 import { grouped } from "@/lib/format";
 import MandiBoard from "@/components/MandiBoard";
 import MandiTicker from "@/components/MandiTicker";
 import DemandCard from "@/components/DemandCard";
+import SupplyCard from "@/components/SupplyCard";
 import ActiveDealStrip from "@/components/ActiveDealStrip";
 import Button from "@/components/ui/Button";
 
@@ -17,10 +18,18 @@ import Button from "@/components/ui/Button";
  *
  * The screen is arranged the way a farmer walks into a mandi: their own standing in the
  * book first, then anything they have running, then the board on the wall, then what
- * they can overhear happening, then who is bidding. The mic is not on this screen at
+ * they can overhear happening, then who is trading. The mic is not on this screen at
  * all — it floats in the shell above every tab — because a mic occupying the home
  * screen is what made this read as a voice assistant with a market attached, rather
  * than a market you can talk to.
+ *
+ * Sell and Buy are two directions of the *same* market, not two apps, so the switch sits
+ * at the top and turns the surface rather than replacing it. What stays put: the mandi
+ * board and the feed — a rate is a rate whichever way you're trading. What turns: the
+ * ledger line (earned ⇄ spent), the counterparty section (who's buying ⇄ who's selling),
+ * and the verb on every card. Previously this control sat at the *bottom* and did
+ * nothing but hint the voice extractor, which made the one place the app named the
+ * direction the one place changing it had no visible effect.
  */
 export default function MarketScreen({
   language,
@@ -29,7 +38,7 @@ export default function MarketScreen({
   refreshKey,
   mode,
   onModeChange,
-  onSellCommodity,
+  onStartFlow,
   onOpenDeals,
 }: {
   language: Language;
@@ -39,7 +48,8 @@ export default function MarketScreen({
   refreshKey: number;
   mode: Action;
   onModeChange: (mode: Action) => void;
-  onSellCommodity: (commodity: string) => void;
+  /** Enter the transaction flow aimed at one commodity, in the direction on screen. */
+  onStartFlow: (commodity: string, action: Action) => void;
   /** Tapping the in-flight deal takes the farmer to their record, where the full card is. */
   onOpenDeals: () => void;
 }) {
@@ -101,6 +111,16 @@ export default function MarketScreen({
   }, [userId, refreshKey]);
 
   const activeDeal = deals?.deals.find((d) => d.status !== "delivered");
+  const selling = mode === "sell";
+
+  // The ledger reads in the direction being traded: a farmer looking at inputs to buy
+  // should not be shown "earned" against money that went out.
+  const ledgerAmount = selling ? deals?.earnedThisMonth : deals?.spentThisMonth;
+  const ledgerLabel = selling ? t.earnedThisMonth : t.spentThisMonth;
+  const ledgerCount = selling
+    ? fill(t.dealsCount, { n: deals?.sellCount ?? 0 })
+    : fill(t.ordersCount, { n: deals?.buyCount ?? 0 });
+  const hasLedger = (selling ? deals?.sellCount : deals?.buyCount) ?? 0;
 
   return (
     <div className="flex flex-col gap-5 pt-3">
@@ -113,17 +133,37 @@ export default function MarketScreen({
           </span>
           <span className="text-sm text-text-secondary">{t.yourLedger}</span>
         </div>
-        {deals && deals.dealCount > 0 && (
+        {hasLedger > 0 && (
           <div className="flex shrink-0 flex-col items-end">
             <span className="text-xl font-bold leading-none tabular-nums text-primary">
-              ₹{grouped(deals.earnedThisMonth)}
+              ₹{grouped(ledgerAmount ?? 0)}
             </span>
             <span className="text-sm text-text-secondary">
-              {t.earnedThisMonth} · {fill(t.dealsCount, { n: deals.dealCount })}
+              {ledgerLabel} · {ledgerCount}
             </span>
           </div>
         )}
       </div>
+
+      {/* The direction switch, at the top where it governs everything below it. */}
+      <section className="flex items-center gap-3">
+        <span className="shrink-0 text-sm text-text-secondary">{t.intentLabel}</span>
+        <div className="ml-auto flex overflow-hidden rounded-lg border border-border">
+          <ModeChip
+            active={selling}
+            icon={<Wheat size={15} />}
+            label={t.sell}
+            onClick={() => onModeChange("sell")}
+          />
+          <span className="w-px bg-border" />
+          <ModeChip
+            active={!selling}
+            icon={<ShoppingBag size={15} />}
+            label={t.buy}
+            onClick={() => onModeChange("buy")}
+          />
+        </div>
+      </section>
 
       {activeDeal && (
         <section className="flex flex-col gap-2">
@@ -150,46 +190,51 @@ export default function MarketScreen({
 
           <MandiTicker language={language} items={market.ticker} />
 
-          <section className="flex flex-col gap-1">
-            <SectionHead
-              title={t.liveDemand}
-              trailing={fill(t.buyersTaking, {
-                n: market.demand.reduce((sum, d) => sum + d.buyers, 0),
-              })}
-            />
-            <div className="flex flex-col">
-              {market.demand.map((d: DemandSummary) => (
-                <DemandCard
-                  key={d.commodity}
-                  language={language}
-                  demand={d}
-                  onSell={onSellCommodity}
-                />
-              ))}
-            </div>
-          </section>
-
-          {/* Sell/buy is only a hint for the voice flow — spoken intent still wins — but
-              stating it plainly on the home screen is how the app says this market runs
-              both ways, not just outward from the farm. */}
-          <section className="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5">
-            <span className="text-sm text-text-secondary">{t.intentLabel}</span>
-            <div className="ml-auto flex overflow-hidden rounded-lg border border-border">
-              <ModeChip
-                active={mode === "sell"}
-                icon={<Wheat size={15} />}
-                label={t.sell}
-                onClick={() => onModeChange("sell")}
+          {/* The counterparty section — the half of the screen the direction owns.
+              Selling, it's who's bidding for the crop; buying, it's who stocks what the
+              next crop needs. Same shape, so flipping direction reads as the market
+              turning rather than as a different screen loading. */}
+          {selling ? (
+            <section className="flex flex-col gap-1">
+              <SectionHead
+                title={t.liveDemand}
+                trailing={fill(t.buyersTaking, {
+                  n: market.demand.reduce((sum, d) => sum + d.buyers, 0),
+                })}
               />
-              <span className="w-px bg-border" />
-              <ModeChip
-                active={mode === "buy"}
-                icon={<ShoppingBag size={15} />}
-                label={t.buy}
-                onClick={() => onModeChange("buy")}
-              />
-            </div>
-          </section>
+              <div className="flex flex-col">
+                {market.demand.map((d: DemandSummary) => (
+                  <DemandCard
+                    key={d.commodity}
+                    language={language}
+                    demand={d}
+                    onSell={(commodity) => onStartFlow(commodity, "sell")}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : (
+            <section className="flex flex-col gap-1">
+              {/* No trailing count here: each row already says how many dealers stock
+                  that input, and any total across rows would double-count the shops
+                  that stock several. */}
+              <SectionHead title={t.liveSupply} />
+              {market.supply.length === 0 ? (
+                <p className="py-6 text-center text-base text-text-secondary">{t.noSupply}</p>
+              ) : (
+                <div className="flex flex-col">
+                  {market.supply.map((s: SupplySummary) => (
+                    <SupplyCard
+                      key={s.commodity}
+                      language={language}
+                      supply={s}
+                      onBuy={(commodity) => onStartFlow(commodity, "buy")}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </>
       )}
     </div>

@@ -2,7 +2,7 @@
 
 import { Draft, Language } from "@/lib/types";
 import { copy } from "@/lib/copy";
-import { commodityEmoji } from "@/lib/commodities";
+import { commodityEmoji, localCommodity, localUnit } from "@/lib/commodities";
 
 /**
  * The spoken request, rendered as a mandi parchi rather than as a reply.
@@ -21,7 +21,11 @@ export default function OrderSlip({
   slipNo: string;
 }) {
   const t = copy[language];
-  const unit = draft.unit || "";
+  // Same localisation the read-back uses, so the slip on screen and the slip spoken
+  // aloud name the goods identically. The rates board already reads टमाटर; a confirm
+  // slip that says "Tomato" is the one English word left in a Hindi transaction.
+  const unit = localUnit(draft.unit, language);
+  const item = draft.commodity ? localCommodity(draft.commodity, language) : "";
 
   return (
     <div className="overflow-hidden rounded-2xl border-2 border-border bg-surface">
@@ -37,7 +41,7 @@ export default function OrderSlip({
       <dl className="flex flex-col divide-y divide-border px-4">
         <SlipRow
           label={t.slipCommodity}
-          value={draft.commodity || t.notSet}
+          value={item || t.notSet}
           emoji={draft.commodity ? commodityEmoji(draft.commodity, draft.action) : undefined}
           strong
         />

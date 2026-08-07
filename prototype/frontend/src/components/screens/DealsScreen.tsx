@@ -2,15 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { IndianRupee } from "lucide-react";
-import { DealsData, Language } from "@/lib/types";
+import { Action, DealsData, Language } from "@/lib/types";
 import { copy, fill } from "@/lib/copy";
 import { getDeals } from "@/lib/api";
 import { grouped } from "@/lib/format";
 import DealCard from "@/components/DealCard";
 
+/** All deals, or one direction of the book. */
+type Filter = "all" | Action;
+
 /**
  * The farmer's standing record. This tab is the single clearest answer to "is this a
  * marketplace or a chatbot?" — a conversation has nothing to show here.
+ *
+ * Crop sold and inputs bought are one book, so All leads and lists both. The headline
+ * figure stays earnings even there — deliberately not earnings-minus-spend, since a
+ * netted number under a label reading "earned" is a number that can go negative and
+ * still claim to be income. Switching to Buy re-reads the header as spending, which is
+ * the only place that total belongs.
  */
 export default function DealsScreen({
   language,
@@ -24,6 +33,7 @@ export default function DealsScreen({
 }) {
   const t = copy[language];
   const [data, setData] = useState<DealsData | null>(null);
+  const [filter, setFilter] = useState<Filter>("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -40,8 +50,24 @@ export default function DealsScreen({
     };
   }, [userId, refreshKey]);
 
-  const live = data?.deals.filter((d) => d.status !== "delivered") ?? [];
-  const past = data?.deals.filter((d) => d.status === "delivered") ?? [];
+  const shown = data?.deals.filter((d) => filter === "all" || d.action === filter) ?? [];
+  const live = shown.filter((d) => d.status !== "delivered");
+  const past = shown.filter((d) => d.status === "delivered");
+
+  const earned = data?.earnedThisMonth ?? 0;
+  const spent = data?.spentThisMonth ?? 0;
+  const header =
+    filter === "buy"
+      ? { amount: spent, label: t.spentThisMonth, count: fill(t.ordersCount, { n: data?.buyCount ?? 0 }) }
+      : filter === "sell"
+        ? { amount: earned, label: t.earnedThisMonth, count: fill(t.dealsCount, { n: data?.sellCount ?? 0 }) }
+        : { amount: earned, label: t.earnedThisMonth, count: fill(t.dealsCount, { n: data?.dealCount ?? 0 }) };
+
+  const FILTERS: { key: Filter; label: string }[] = [
+    { key: "all", label: t.filterAll },
+    { key: "sell", label: t.sell },
+    { key: "buy", label: t.buy },
+  ];
 
   return (
     <div className="flex flex-col gap-5 pt-3">
@@ -51,16 +77,36 @@ export default function DealsScreen({
         <div className="flex flex-col">
           <span className="flex items-center text-3xl font-bold leading-none tabular-nums text-primary">
             <IndianRupee size={24} strokeWidth={2.5} />
-            {grouped(data?.earnedThisMonth ?? 0)}
+            {grouped(header.amount)}
           </span>
-          <span className="mt-1 text-base text-text-secondary">{t.earnedThisMonth}</span>
+          <span className="mt-1 text-base text-text-secondary">{header.label}</span>
         </div>
-        <span className="text-base tabular-nums text-text-secondary">
-          {fill(t.dealsCount, { n: data?.dealCount ?? 0 })}
-        </span>
+        <span className="text-base tabular-nums text-text-secondary">{header.count}</span>
       </div>
 
-      {data && data.deals.length === 0 && (
+      {/* Shown only once there is something to separate — a filter over two deals is
+          chrome, not a tool. */}
+      {data && data.sellCount > 0 && data.buyCount > 0 && (
+        <div className="flex gap-2">
+          {FILTERS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFilter(key)}
+              aria-pressed={filter === key}
+              className={`min-h-[36px] rounded-full border px-4 text-sm font-semibold transition-colors duration-150 ${
+                filter === key
+                  ? "border-primary bg-primary text-white"
+                  : "border-border bg-surface text-text-secondary hover:border-primary"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {data && shown.length === 0 && (
         <p className="py-8 text-center text-base text-text-secondary">{t.noDeals}</p>
       )}
 

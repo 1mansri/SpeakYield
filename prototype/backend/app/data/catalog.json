@@ -103,6 +103,36 @@
       "review": "Wide range, free home delivery above 5 bags."
     }
   ],
+  "inputs": [
+    {
+      "name": "Urea fertiliser",
+      "name_hi": "यूरिया खाद",
+      "name_bn": "ইউরিয়া সার",
+      "unit": "bag",
+      "emoji": "🧪"
+    },
+    {
+      "name": "DAP",
+      "name_hi": "डीएपी खाद",
+      "name_bn": "ডিএপি সার",
+      "unit": "bag",
+      "emoji": "🧪"
+    },
+    {
+      "name": "Seeds",
+      "name_hi": "बीज",
+      "name_bn": "বীজ",
+      "unit": "kg",
+      "emoji": "🌱"
+    },
+    {
+      "name": "Pesticide",
+      "name_hi": "कीटनाशक",
+      "name_bn": "কীটনাশক",
+      "unit": "litre",
+      "emoji": "🧴"
+    }
+  ],
   "listings": [
     {
       "id": "l1",

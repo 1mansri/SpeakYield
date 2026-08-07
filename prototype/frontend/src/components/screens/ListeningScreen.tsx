@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle } from "lucide-react";
-import { Language } from "@/lib/types";
+import { Action, Language } from "@/lib/types";
 import { copy } from "@/lib/copy";
 import { recordWithAutoStop, RecordingSession } from "@/lib/recorder";
 import Button from "@/components/ui/Button";
@@ -11,13 +11,18 @@ const BAR_COUNT = 5;
 
 export default function ListeningScreen({
   language,
+  action,
   hint,
   onCancel,
   onRecorded,
 }: {
   language: Language;
-  /** Commodity the farmer tapped into this from, when they arrived via a demand card
-   *  rather than the mic — shown so the flow keeps the context they picked. */
+  /** The direction the farmer came in on. Only shapes the worked example below — the
+   *  extractor still decides the real action from what they actually say, so arriving
+   *  here in Buy mode and saying "sell my tomatoes" works exactly as it should. */
+  action: Action;
+  /** Commodity the farmer tapped into this from, when they arrived via a demand or
+   *  supply card rather than the mic — shown so the flow keeps the context they picked. */
   hint?: string;
   onCancel: () => void;
   onRecorded: (audio: Blob) => void;
@@ -95,6 +100,11 @@ export default function ListeningScreen({
               {speaking ? t.understanding : t.listening}
             </p>
             <p className="max-w-xs text-center text-base text-text-secondary">{t.keepSpeaking}</p>
+            {/* A worked example in the direction they came in on. A farmer who taps Buy
+                and then hears a selling example has been told the app didn't notice. */}
+            <p className="max-w-xs text-center text-base text-text-secondary">
+              {action === "sell" ? t.exampleSell : t.exampleBuy}
+            </p>
           </>
         )}
       </div>
